@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>fetchWebByPlaywrightHead.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">fetchWebByPlaywrightHead.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import { chromium } from 'playwright'
+import get from 'lodash-es/get.js'
+import isbol from 'wsemi/src/isbol.mjs'
+import ispint from 'wsemi/src/ispint.mjs'
+import isp0int from 'wsemi/src/isp0int.mjs'
+import cint from 'wsemi/src/cint.mjs'
+import cbol from 'wsemi/src/cbol.mjs'
+import delay from 'wsemi/src/delay.mjs'
+import getUrlErrorResult from './getUrlErrorResult.mjs'
+import getRetryWaitMs from './getRetryWaitMs.mjs'
+import navigateWithRedirectWait from './navigateWithRedirectWait.mjs'
+import extractPageContent from './extractPageContent.mjs'
+
+
+//方法名稱
+let METHOD = 'playwright-headed'
+
+//預設值
+let DEFAULT_MAX_RETRIES = 5
+let DEFAULT_NAV_TIMEOUT_MS = 15000
+let DEFAULT_POST_NAV_WAIT_MS = 5000
+
+
+//驗證iframe之選取器
+let VERIFY_SELECTORS = [
+    'iframe[src*="challenges.cloudflare.com"]',
+    'iframe[src*="/cdn-cgi/challenge-platform"]',
+    '.cf-turnstile iframe',
+    'iframe[src*="hcaptcha.com"]',
+]
+
+
+//模擬人類滑鼠軌跡, 隨機起點至中途點至目標, 並加隨機抖動與停頓
+async function _humanClick(page, x, y) {
+
+    let startX = 100 + Math.random() * 200
+    let startY = 500 + Math.random() * 100
+    await page.mouse.move(startX, startY)
+
+    let steps = 2 + Math.floor(Math.random() * 2)
+    for (let i = 1; i &lt;= steps; i++) {
+        let ratio = i / (steps + 1)
+        let mx = startX + (x - startX) * ratio + (Math.random() - 0.5) * 30
+        let my = startY + (y - startY) * ratio + (Math.random() - 0.5) * 20
+        await page.mouse.move(mx, my)
+        await page.waitForTimeout(80 + Math.random() * 120)
+    }
+
+    await page.mouse.move(x, y)
+    await page.waitForTimeout(50 + Math.random() * 100)
+    await page.mouse.click(x, y)
+}
+
+
+//偵測並點擊驗證checkbox(Cloudflare Turnstile、hCaptcha等)
+async function _tryClickVerification(page) {
+
+    //模式A, DOM中可見之iframe(傳統嵌入)
+    for (let sel of VERIFY_SELECTORS) {
+        let el = page.locator(sel).first()
+        let count = await el.count().catch(() => 0)
+        if (count > 0) {
+            let box = await el.boundingBox().catch(() => null)
+            if (box) {
+                await _humanClick(page, box.x + box.width / 2, box.y + box.height / 2)
+                process.stderr.write(`[fetchWebByPlaywrightHead] clicked verification iframe (${sel})\n`)
+                await page.waitForTimeout(5000)
+                await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+                return true
+            }
+        }
+    }
+
+    //模式B, Cloudflare managed challenge整頁(iframe不在DOM, 須透過page.frames)
+    let cfFrame = page.frames().find((f) => f.url().includes('challenges.cloudflare.com'))
+    if (cfFrame) {
+        let container = page.locator('#turnstile-container, #turnstileWrapper, .cf-turnstile').first()
+        let box = await container.boundingBox().catch(() => null)
+        if (box) {
+            await _humanClick(page, box.x + 30, box.y + box.height / 2)
+        }
+        else {
+            let vp = page.viewportSize() || { width: 1280, height: 720 }
+            await _humanClick(page, vp.width * 0.39, vp.height * 0.57)
+        }
+        process.stderr.write('[fetchWebByPlaywrightHead] clicked Cloudflare managed challenge checkbox\n')
+        await page.waitForTimeout(8000)
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+        return true
+    }
+
+    return false
+}
+
+
+/**
+ * 使用Playwright有頭Chrome抓取網頁原始HTML，含驗證checkbox自動點擊
+ *
+ * 特點：
+ * 有頭模式(實體視窗)並加反自動化偽裝(隱藏webdriver、disable-blink-features)；
+ * 自動偵測並點擊Cloudflare Turnstile與hCaptcha等驗證checkbox(模擬人類滑鼠軌跡)；
+ * 可見文字過少時自動穿透Shadow DOM取得內文並重組為簡易HTML；
+ * 失敗時自動重試(線性退避3至15秒)；
+ * 使用playwright之chromium並指定channel='chrome'，故執行環境須已安裝Chrome瀏覽器，且執行時會開啟實體瀏覽器視窗
+ *
+ * @param {String} url 輸入待抓取網址字串
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {Integer} [opt.navigationTimeoutMs=15000] 輸入頁面導航最長等待毫秒整數，預設15000
+ * @param {Integer} [opt.postNavigationWaitMs=5000] 輸入導航後額外等待毫秒整數，預設5000
+ * @param {Boolean} [opt.waitForRedirect=false] 輸入是否等待JS轉址完成布林值，預設false
+ * @param {Boolean} [opt.skipVerificationClick=false] 輸入是否跳過驗證checkbox自動點擊布林值，預設false
+ * @param {Integer} [opt.maxRetries=5] 輸入失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,verificationClicked,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject
+ * @example
+ *
+ * import fetchWebByPlaywrightHead from './src/fetchWebByPlaywrightHead.mjs'
+ *
+ * let test = async () => {
+ *
+ *     let r = await fetchWebByPlaywrightHead('https://example.com/')
+ *     console.log(r.status, r.verificationClicked, r.htmlLength)
+ *     // => 'success' false 234
+ *
+ *     let re = await fetchWebByPlaywrightHead('abc')
+ *     console.log(re.status, re.reason)
+ *     // => 'error' 'invalid-url'
+ *
+ * }
+ * await test()
+ *     .catch((err) => {
+ *         console.log(err)
+ *     })
+ *
+ */
+async function fetchWebByPlaywrightHead(url, opt = {}) {
+
+    //fetchedAt
+    let fetchedAt = new Date().toISOString()
+
+    //check url
+    let rErr = getUrlErrorResult(url, METHOD, fetchedAt)
+    if (rErr) {
+        return rErr
+    }
+
+    //navTimeout
+    let navTimeout = get(opt, 'navigationTimeoutMs', null)
+    if (!ispint(navTimeout)) {
+        navTimeout = DEFAULT_NAV_TIMEOUT_MS
+    }
+    else {
+        navTimeout = cint(navTimeout)
+    }
+
+    //postWait
+    let postWait = get(opt, 'postNavigationWaitMs', null)
+    if (!isp0int(postWait)) {
+        postWait = DEFAULT_POST_NAV_WAIT_MS
+    }
+    else {
+        postWait = cint(postWait)
+    }
+
+    //waitForRedirect
+    let waitForRedirect = get(opt, 'waitForRedirect', null)
+    if (!isbol(waitForRedirect)) {
+        waitForRedirect = false
+    }
+    else {
+        waitForRedirect = cbol(waitForRedirect)
+    }
+
+    //skipVerify
+    let skipVerify = get(opt, 'skipVerificationClick', null)
+    if (!isbol(skipVerify)) {
+        skipVerify = false
+    }
+    else {
+        skipVerify = cbol(skipVerify)
+    }
+
+    //maxRetries
+    let maxRetries = get(opt, 'maxRetries', null)
+    if (!isp0int(maxRetries)) {
+        maxRetries = DEFAULT_MAX_RETRIES
+    }
+    else {
+        maxRetries = cint(maxRetries)
+    }
+
+    let lastMessage = ''
+
+    for (let attempt = 1; attempt &lt;= maxRetries + 1; attempt++) {
+        let browser = null
+        try {
+
+            browser = await chromium.launch({
+                headless: false,
+                channel: 'chrome',
+                args: ['--disable-blink-features=AutomationControlled'],
+            })
+            let page = await browser.newPage()
+
+            //隱藏webdriver標記
+            await page.addInitScript(() => {
+                Object.defineProperty(navigator, 'webdriver', { get: () => false })
+            })
+
+            if (waitForRedirect) {
+                await navigateWithRedirectWait(page, url, navTimeout)
+            }
+            else {
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeout })
+                await page.waitForTimeout(postWait)
+            }
+
+            let verificationClicked = false
+            if (!skipVerify) {
+                verificationClicked = await _tryClickVerification(page)
+            }
+
+            let html = await extractPageContent(page)
+
+            return {
+                status: 'success',
+                url,
+                html,
+                htmlLength: html.length,
+                verificationClicked,
+                method: METHOD,
+                fetchedAt,
+                attempts: attempt,
+            }
+        }
+        catch (err) {
+            lastMessage = err.message || String(err)
+            if (attempt &lt;= maxRetries) {
+                let ms = getRetryWaitMs(attempt)
+                process.stderr.write(`[fetchWebByPlaywrightHead] error: ${lastMessage}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
+                await delay(ms)
+                continue
+            }
+            return {
+                status: 'error',
+                url,
+                message: lastMessage,
+                reason: 'playwright-error',
+                method: METHOD,
+                fetchedAt,
+                attempts: attempt,
+            }
+        }
+        finally {
+            if (browser) {
+                await browser.close().catch(() => {})
+            }
+        }
+    }
+
+    return { status: 'error', url, message: lastMessage || 'max retries exceeded', reason: 'playwright-error', method: METHOD, fetchedAt, attempts: maxRetries + 1 }
+}
+
+
+export default fetchWebByPlaywrightHead
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri Aug 07 2026 06:06:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>fetchWeb.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">fetchWeb.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import { Readability } from '@mozilla/readability'
+import { JSDOM } from 'jsdom'
+import get from 'lodash-es/get.js'
+import isestr from 'wsemi/src/isestr.mjs'
+import isbol from 'wsemi/src/isbol.mjs'
+import isp0int from 'wsemi/src/isp0int.mjs'
+import cint from 'wsemi/src/cint.mjs'
+import cbol from 'wsemi/src/cbol.mjs'
+import isValidUrl from './isValidUrl.mjs'
+import estimateVisibleText from './estimateVisibleText.mjs'
+import fetchWebByCurl from './fetchWebByCurl.mjs'
+import fetchWebByPlaywrightHeadless from './fetchWebByPlaywrightHeadless.mjs'
+import fetchWebByPlaywrightHead from './fetchWebByPlaywrightHead.mjs'
+import fetchWebByCamofox from './fetchWebByCamofox.mjs'
+
+
+//最低有效字數(解析後)
+let MIN_CONTENT = 50
+
+//方法名稱常數, 與4個抓取函數回傳的method字串一致
+let METHOD_CURL = 'curl'
+let METHOD_PW_HEADLESS = 'playwright-headless'
+let METHOD_PW_HEADED = 'playwright-headed'
+let METHOD_CAMOFOX = 'camofox'
+
+//檢測結果類型常數
+let DETECT_PASS = 'pass'
+let DETECT_CAPTCHA = 'captcha'
+let DETECT_VERIFY = 'verify'
+let DETECT_REDIRECT = 'redirect'
+let DETECT_EMPTY = 'empty'
+
+//轉址提取之最大遞迴深度
+let MAX_REDIRECT_DEPTH = 3
+
+
+//產生本地時間字串
+function _ts() {
+    let d = new Date()
+    let pad = (n) => String(n).padStart(2, '0')
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+        ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
+}
+
+
+//把抓取函數的{status:'success'|'error',html,...}結構, 轉為內部階梯升級用的{success,html?,method,reason?,message?}結構
+function _adapt(r) {
+    if (r.status === 'success') {
+        return { success: true, html: r.html, method: r.method, snapshot: r.snapshot }
+    }
+    return { success: false, method: r.method, reason: r.reason || 'unknown', message: r.message }
+}
+
+
+//判識C, 已知須Playwright有頭模式之網站(headless無法正確渲染內容)
+let HEADED_REQUIRED_PATTERNS = [
+    /^https?:\/\/(?:www\.)?wsj\.com\//,
+]
+function _requiresHeaded(url) {
+    return HEADED_REQUIRED_PATTERNS.some((p) => p.test(url))
+}
+
+
+//判識D, 已知須Camofox反偵測瀏覽器之網站(方法①②③皆無法通過驗證, 直接跳方法④)
+let CAMOFOX_REQUIRED_PATTERNS = [
+    /^https?:\/\/mp\.weixin\.qq\.com\//,
+]
+function _requiresCamofox(url) {
+    return CAMOFOX_REQUIRED_PATTERNS.some((p) => p.test(url))
+}
+
+
+//判識A, 已知須執行JS之轉址服務(curl永遠只拿到包裝頁)
+let JS_REDIRECT_PATTERNS = [
+    /^https?:\/\/(?:www\.)?linkedin\.com\/redir\/redirect/,
+    /^https?:\/\/(?:www\.)?linkedin\.com\/feed\/update/,
+    /^https?:\/\/news\.google\.com\/articles\//,
+    /^https?:\/\/news\.google\.com\/rss\/articles\//,
+]
+function _requiresJsRedirect(url) {
+    return JS_REDIRECT_PATTERNS.some((p) => p.test(url))
+}
+
+
+//判識E, 已知SPA網站(curl拿到的是JS渲染前空殼, Readability只解析得到頁尾與導覽)
+let HEADLESS_REQUIRED_PATTERNS = [
+    /^https?:\/\/(?:www\.)?msn\.com\//,
+]
+function _requiresHeadless(url) {
+    return HEADLESS_REQUIRED_PATTERNS.some((p) => p.test(url))
+}
+
+
+//判識B, query參數中含真實網址之轉址服務
+let URL_PARAM_PATTERNS = [
+    { match: /linkedin\.com\/redir\/redirect/, param: 'url' },
+    { match: /youtube\.com\/redirect/, param: 'q' },
+]
+function _extractRedirectTarget(url) {
+    for (let { match, param } of URL_PARAM_PATTERNS) {
+        if (match.test(url)) {
+            let u = new URL(url)
+            let target = u.searchParams.get(param)
+            if (target) {
+                return decodeURIComponent(target)
+            }
+        }
+    }
+    return null
+}
+
+
+/**
+ * 由網頁原始HTML檢測頁面是否為有效內容
+ *
+ * 純粹基於原始HTML結構判斷，不依賴Readability，用於判識CAPTCHA與反爬蟲挑戰頁、驗證頁、
+ * 轉址包裝頁、空內容頁，供階梯升級決策使用
+ *
+ * @param {String} html 輸入網頁HTML字串
+ * @returns {Object} 回傳檢測結果物件，格式為{pass,type,message}，其中pass為是否通過布林值，type為'pass'、'captcha'、'verify'、'redirect'、'empty'之一，message為說明字串
+ * @example
+ *
+ * import { inspectHtml } from './src/fetchWeb.mjs'
+ *
+ * console.log(inspectHtml('&lt;html>&lt;head>&lt;title>Just a moment&lt;/title>&lt;/head>&lt;body>&lt;/body>&lt;/html>'))
+ * // => { pass: false, type: 'captcha', message: 'Cloudflare/anti-bot challenge' }
+ *
+ * console.log(inspectHtml('&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt;body>&lt;p>' + 'x'.repeat(300) + '&lt;/p>&lt;/body>&lt;/html>'))
+ * // => { pass: true, type: 'pass', message: 'ok' }
+ *
+ */
+function inspectHtml(html) {
+
+    //check
+    if (!isestr(html)) {
+        return { pass: false, type: DETECT_EMPTY, message: 'html is required (string)' }
+    }
+
+    let lower = html.toLowerCase()
+    let title = html.match(/&lt;title>([^&lt;]*)/i)?.[1]?.trim() || ''
+    let titleLower = title.toLowerCase()
+
+    //CAPTCHA與反爬蟲挑戰頁
+    //抓取函數會把shadow-DOM萃取的短內容包進&lt;article>, 故不能用&lt;article>當例外
+    if (lower.includes('captcha-delivery.com')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'DataDome CAPTCHA' }
+    }
+    if (lower.includes('perimeterx')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'PerimeterX challenge' }
+    }
+    if (lower.includes('cf-challenge-running')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'Cloudflare challenge' }
+    }
+    if (titleLower === 'just a moment' || titleLower === 'just a quick check') {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'Cloudflare/anti-bot challenge' }
+    }
+    if (lower.includes('captcha') &amp;&amp; lower.includes('challenge') &amp;&amp; !lower.includes('&lt;article') &amp;&amp; html.length &lt; 50000) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'generic CAPTCHA' }
+    }
+    if (titleLower.includes('are you a robot')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'robot challenge: "' + title + '"' }
+    }
+    if (lower.includes('cf-turnstile') &amp;&amp; !lower.includes('&lt;article')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'Cloudflare Turnstile' }
+    }
+    if (lower.includes('verify you are human')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'human verification page' }
+    }
+    if (lower.includes('blocked by our server') || lower.includes('request has been blocked')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'server security block' }
+    }
+    if (titleLower === 'access denied' || (lower.includes('access denied') &amp;&amp; lower.includes('edgesuite.net'))) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'access denied (WAF/CDN block)' }
+    }
+    if (lower.includes('something went wrong') &amp;&amp; (lower.includes('x.com') || lower.includes('twitter.com')) &amp;&amp; !lower.includes('&lt;article')) {
+        return { pass: false, type: DETECT_CAPTCHA, message: 'X/Twitter error page' }
+    }
+
+    //驗證頁面
+    if (lower.includes('secitptpage') &amp;&amp; lower.includes('wx.qq.com')) {
+        return { pass: false, type: DETECT_VERIFY, message: 'WeChat verification page' }
+    }
+
+    //轉址包裝頁
+    let metaRefreshUrl = (html.match(/&lt;meta[^>]+http-equiv=["']refresh["'][^>]+url=["']?([^"'\s>]*)["']?/i)?.[1] || '').replace(/[\\'"\s]/g, '')
+    if (metaRefreshUrl.length > 0) {
+        return { pass: false, type: DETECT_REDIRECT, message: 'meta refresh redirect' }
+    }
+    if (lower.includes('c-wiz') &amp;&amp; lower.includes('news.google.com')) {
+        return { pass: false, type: DETECT_REDIRECT, message: 'Google News wrapper' }
+    }
+
+    //估算可見內文長度(轉址與載入殼頁判斷, 及空內容判斷共用)
+    let visible = estimateVisibleText(html)
+
+    //轉址與載入interstitial殼頁, 標題含平台或載入關鍵字「且」頁面幾乎無實質內容, 才判定
+    //雙條件缺一不可, 只靠標題子字串會把標題剛好含關鍵字的正常文章誤殺(實測Wikipedia
+    //「Loading screen」visible約13k、「MSN」約49k被誤判為轉址頁, 導致整篇抓取失敗), 真殼頁
+    //visible近0(實測MSN殼=0、Google News=1822, 後者另由上方c-wiz規則攔)
+    let WRAPPER_TITLES = ['google news', 'redirecting', 'loading', 'msn']
+    if (visible.length &lt; 500 &amp;&amp; WRAPPER_TITLES.some((t) => titleLower.includes(t))) {
+        return { pass: false, type: DETECT_REDIRECT, message: 'platform wrapper: "' + title + '"' }
+    }
+
+    //空內容與無實質可見文字
+    if (html.length > 5000 &amp;&amp; visible.length &lt; 200) {
+        return { pass: false, type: DETECT_EMPTY, message: 'minimal visible text (' + visible.length + ' chars in ' + html.length + ' bytes HTML)' }
+    }
+
+    return { pass: true, type: DETECT_PASS, message: 'ok' }
+}
+
+
+//由HTML取標題並剝除尾端站名
+function _extractHtmlTitle(html) {
+    return html.match(/&lt;title>([^&lt;]*)/i)?.[1]?.replace(/-[^-]*$/, '')?.trim() || ''
+}
+
+
+//格隆匯(快訊與文章), 由Nuxt SSR state提取結構化資料
+function _parseGelonghui(html, url) {
+
+    let fields = ['dtbDetail', 'articleDetail']
+    for (let field of fields) {
+
+        let re = new RegExp(field + ':\\{[\\s\\S]*?(?:,|\\{)content:"((?:[^"\\\\]|\\\\.)*)"')
+        let match = html.match(re)
+        if (!match) {
+            continue
+        }
+
+        let raw = match[1]
+            .replace(/\\u([0-9a-fA-F]{4})/g, (s, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\')
+
+        let content = raw.replace(/&lt;[^>]+>/g, '').replace(/&amp;[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+        let title = _extractHtmlTitle(html)
+
+        if (content.length &lt; MIN_CONTENT) {
+            return { success: false, reason: 'empty-content', message: 'content too short (' + content.length + ' chars)' }
+        }
+        return { success: true, title, content, contentLength: content.length }
+    }
+
+    return { success: false, reason: 'custom-parser-miss', message: 'gelonghui: no content found in __NUXT__ state' }
+}
+
+
+//Bloomberg, 由__NEXT_DATA__提取story.body.content
+function _parseBloomberg(html, url) {
+
+    let m = html.match(/&lt;script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)&lt;\/script>/)
+    if (!m) {
+        return { success: false, reason: 'custom-parser-miss', message: 'bloomberg: no __NEXT_DATA__' }
+    }
+
+    let data
+    try {
+        data = JSON.parse(m[1])
+    }
+    catch {
+        return { success: false, reason: 'custom-parser-miss', message: 'bloomberg: __NEXT_DATA__ JSON parse failed' }
+    }
+
+    let story = data?.props?.pageProps?.story
+    let blocks = story?.body?.content
+    if (!Array.isArray(blocks) || blocks.length === 0) {
+        return { success: false, reason: 'custom-parser-miss', message: 'bloomberg: no story.body.content' }
+    }
+
+    let SKIP = new Set(['ad', 'inline-newsletter', 'inline-recirc', 'media', 'image', 'video', 'blockquote-instagram'])
+    let nodeText = (n) => {
+        if (n === null || typeof n !== 'object') {
+            return ''
+        }
+        let t = typeof n.value === 'string' ? n.value : ''
+        if (Array.isArray(n.content)) {
+            t += n.content.map(nodeText).join('')
+        }
+        return t
+    }
+
+    let paragraphs = []
+    for (let block of blocks) {
+        if (SKIP.has(block?.type)) {
+            continue
+        }
+        let t = nodeText(block).replace(/\s+/g, ' ').trim()
+        if (t.length > 0) {
+            paragraphs.push(t)
+        }
+    }
+
+    let content = paragraphs.join('\n\n')
+    let title = (typeof story.headline === 'string' ? story.headline : _extractHtmlTitle(html)).trim()
+
+    if (content.length &lt; MIN_CONTENT) {
+        return { success: false, reason: 'empty-content', message: 'bloomberg: content too short (' + content.length + ' chars)' }
+    }
+    return { success: true, title, content, contentLength: content.length }
+}
+
+
+//網站專用解析器白名單
+let CUSTOM_PARSERS = [
+    { pattern: /^https?:\/\/(?:www\.)?gelonghui\.com\//, parse: _parseGelonghui },
+    { pattern: /^https?:\/\/(?:www\.)?bloomberg\.com\/(?:news\/articles|opinion|features)\//, parse: _parseBloomberg },
+]
+function _findCustomParser(url) {
+    for (let entry of CUSTOM_PARSERS) {
+        if (entry.pattern.test(url)) {
+            return entry.parse
+        }
+    }
+    return null
+}
+
+
+//文章解析, 有專用解析器則優先使用, 否則走Readability
+function _parseArticle(html, url) {
+
+    let customParser = _findCustomParser(url)
+    if (customParser) {
+        return customParser(html, url)
+    }
+
+    let article
+    try {
+        let doc = new JSDOM(html, { url })
+        article = new Readability(doc.window.document).parse()
+    }
+    catch (err) {
+
+        //JSDOM與Readability對畸形HTML或異常輸入可能throw, 攔下改回傳解析失敗,
+        //讓上層走「視為empty繼續升級, 或回error結果」, 不讓整支程式crash
+        return { success: false, reason: 'parse-error', message: 'parse error: ' + (err?.message || String(err)) }
+    }
+
+    let content = article?.textContent?.trim() || ''
+    let title = article?.title?.trim() || ''
+
+    if (content.length &lt; MIN_CONTENT) {
+        return {
+            success: false,
+            reason: 'empty-content',
+            message: 'content too short (' + content.length + ' chars)',
+        }
+    }
+
+    return { success: true, title, content, contentLength: content.length }
+}
+
+
+//抓取函數呼叫, 含結構適配
+async function _tryCurl(url, opt) {
+    return _adapt(await fetchWebByCurl(url, opt))
+}
+async function _tryPlaywrightHeadless(url, opt, redirect = false) {
+    return _adapt(await fetchWebByPlaywrightHeadless(url, { ...opt, waitForRedirect: redirect }))
+}
+async function _tryPlaywrightHead(url, opt, redirect = false) {
+    return _adapt(await fetchWebByPlaywrightHead(url, { ...opt, waitForRedirect: redirect }))
+}
+async function _tryCamofox(url, opt) {
+    return _adapt(await fetchWebByCamofox(url, opt))
+}
+
+
+//依parse決定是否解析文章
+function _applyParse(r, url, parse) {
+    if (!r.success) {
+        return r
+    }
+    if (!parse) {
+        return r
+    }
+    let parsed = _parseArticle(r.html, url)
+    if (!parsed.success) {
+        return parsed
+    }
+    let out = { ...parsed, method: r.method }
+    if (r.snapshot) {
+        out.snapshot = r.snapshot
+    }
+    return out
+}
+
+
+//彙整失敗資訊
+function _summarizeFail(r) {
+    return { status: 'failed', reason: r.reason, message: r.message }
+}
+
+
+//彙整最終回傳結果
+function _finalize(url, result, attempts) {
+
+    if (result.success) {
+        let out = { status: 'success', url, method: result.method, fetchedAt: _ts(), attempts }
+        if (result.html !== undefined) {
+            out.html = result.html
+        }
+        else {
+            out.title = result.title
+            out.content = result.content
+            out.contentLength = result.contentLength
+        }
+        if (result.snapshot) {
+            out.snapshot = result.snapshot
+        }
+        return out
+    }
+
+    return {
+        status: 'error',
+        url,
+        message: result.message || 'all methods failed',
+        fetchedAt: _ts(),
+        attempts,
+    }
+}
+
+
+//階梯升級判斷
+function _shouldEscalate(lastBlockType, lastFetchOk) {
+    return !lastFetchOk ||
+        lastBlockType === DETECT_CAPTCHA ||
+        lastBlockType === DETECT_VERIFY ||
+        lastBlockType === DETECT_EMPTY ||
+        lastBlockType === DETECT_REDIRECT
+}
+
+
+//auto模式之階梯升級邏輯
+async function _autoEscalate(url, opt, parse, showLog, { redirect, skipCurl, skipHeadless = false }) {
+
+    let attempts = []
+    let lastBlockType = null
+    let lastFetchOk = true
+
+    let steps = [
+        {
+            label: 'curl',
+            guard: false,
+            skip: skipCurl,
+            fetch: () => _tryCurl(url, opt),
+        },
+        {
+            label: 'Playwright headless',
+            guard: false,
+            skip: skipHeadless,
+            showRedirect: true,
+            fetch: () => _tryPlaywrightHeadless(url, opt, redirect),
+        },
+        {
+            label: 'Playwright headed',
+            guard: !skipHeadless,
+            skip: false,
+            showRedirect: true,
+            fetch: () => _tryPlaywrightHead(url, opt, redirect),
+        },
+        {
+            label: 'Camofox',
+            guard: true,
+            skip: false,
+            fetch: () => _tryCamofox(url, opt),
+        },
+    ]
+
+    for (let step of steps) {
+
+        if (step.skip) {
+            continue
+        }
+        if (step.guard &amp;&amp; !_shouldEscalate(lastBlockType, lastFetchOk)) {
+            continue
+        }
+
+        let tag = step.label + (redirect &amp;&amp; step.showRedirect ? ' (redirect)' : '')
+        if (showLog) {
+            console.log('[fetchWeb] trying ' + tag + ' ...')
+        }
+
+        let r = await step.fetch()
+        if (!r.success) {
+            attempts.push({ method: r.method || step.label, ..._summarizeFail(r) })
+            if (showLog) {
+                console.warn('[fetchWeb] ' + tag + ' failed: ' + r.message)
+            }
+            lastBlockType = null
+            lastFetchOk = false
+            continue
+        }
+
+        let inspection = inspectHtml(r.html)
+        if (inspection.pass) {
+
+            let parsed = _applyParse(r, url, parse)
+            if (parsed.success) {
+                attempts.push({ method: r.method, status: 'success', contentLength: r.html.length })
+                return _finalize(url, parsed, attempts)
+            }
+
+            //解析失敗(SPA與JS渲染頁面)視為empty, 繼續升級
+            attempts.push({ method: r.method, status: 'blocked', type: DETECT_EMPTY, message: parsed.message || 'parse failed' })
+            if (showLog) {
+                console.warn('[fetchWeb] ' + tag + ' parse failed: ' + (parsed.message || 'empty content') + ' — escalating')
+            }
+            lastBlockType = DETECT_EMPTY
+            lastFetchOk = true
+            continue
+        }
+
+        attempts.push({ method: r.method, status: 'blocked', type: inspection.type, message: inspection.message })
+        if (showLog) {
+            console.warn('[fetchWeb] ' + tag + ' blocked: ' + inspection.message)
+        }
+        lastBlockType = inspection.type
+        lastFetchOk = true
+        if (inspection.type === DETECT_REDIRECT) {
+            redirect = true
+        }
+    }
+
+    //所有方法皆失敗
+    let last = attempts[attempts.length - 1]
+    return _finalize(url, {
+        success: false,
+        reason: last?.reason || last?.type || 'unknown',
+        message: last?.message || 'all methods exhausted',
+    }, attempts)
+}
+
+
+/**
+ * 抓取網頁文章內容，支援四種抓取方法自動階梯升級
+ *
+ * 抓取方法：
+ * 方法①curl(預設，繞過TLS指紋)，委派fetchWebByCurl；
+ * 方法②Playwright無頭(SPA動態渲染頁面)，委派fetchWebByPlaywrightHeadless；
+ * 方法③Playwright有頭(反自動化偵測)，委派fetchWebByPlaywrightHead；
+ * 方法④Camofox反偵測瀏覽器(Cloudflare等)，委派fetchWebByCamofox
+ *
+ * 本函數僅負責階梯升級、內容判識、文章解析之調度，實際抓取由4個抓取函數執行，
+ * 流程為fetch(委派)至inspectHtml(原始內容檢測)至Readability解析(可選)；
+ * 對已知網站另有轉址提取、跳過特定方法之判識規則，且方法④會額外回傳snapshot欄位
+ *
+ * @param {String} url 輸入待抓取網址字串
+ * @param {Object} [opt={}] 輸入設定物件，其餘鍵值會轉傳給實際執行抓取之函數，預設{}
+ * @param {String} [opt.method='auto'] 輸入指定抓取方法字串，可為'auto'、'curl'、'playwright'、'playwright-headed'、'camofox'，'auto'代表自動階梯升級，預設'auto'
+ * @param {Boolean} [opt.parse=true] 輸入是否以Readability解析出文章標題與內文布林值，false時直接回傳原始HTML，預設true
+ * @param {Boolean} [opt.showLog=true] 輸入是否顯示階梯升級過程訊息布林值，預設true
+ * @param {Integer} [opt.maxRetries=5] 輸入各抓取函數失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，parse=true成功時為{status:'success',url,title,content,contentLength,method,fetchedAt,attempts}，parse=false成功時為{status:'success',url,html,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,fetchedAt,attempts}，本函數不會reject
+ * @example
+ *
+ * import fetchWeb from './src/fetchWeb.mjs'
+ *
+ * let test = async () => {
+ *
+ *     //auto模式, 解析出文章標題與內文
+ *     let r = await fetchWeb('https://example.com/')
+ *     console.log(r.status, r.method, r.title, r.contentLength)
+ *     // => 'success' 'curl' 'Example Domain' 111
+ *
+ *     //指定curl且不解析, 直接取原始HTML
+ *     let rh = await fetchWeb('https://example.com/', { method: 'curl', parse: false })
+ *     console.log(rh.status, rh.html.length)
+ *     // => 'success' 559
+ *
+ *     //失敗時回傳error結果物件, 不會reject
+ *     let re = await fetchWeb('abc')
+ *     console.log(re.status, re.message)
+ *     // => 'error' 'invalid url (must be http/https)'
+ *
+ * }
+ * await test()
+ *     .catch((err) => {
+ *         console.log(err)
+ *     })
+ *
+ */
+async function fetchWeb(url, opt = {}) {
+
+    //check url
+    //須於此攔截無效網址, 否則auto模式會空跑完4種抓取方法才逐一失敗
+    if (!isestr(url)) {
+        return _finalize(String(url), { success: false, reason: 'invalid-url', message: 'url is required (string)' }, [])
+    }
+    if (!isValidUrl(url)) {
+        return _finalize(url, { success: false, reason: 'invalid-url', message: 'invalid url (must be http/https)' }, [])
+    }
+
+    //method
+    let method = get(opt, 'method', null)
+    if (!isestr(method)) {
+        method = 'auto'
+    }
+
+    //parse
+    let parse = get(opt, 'parse', null)
+    if (!isbol(parse)) {
+        parse = true
+    }
+    else {
+        parse = cbol(parse)
+    }
+
+    //showLog
+    let showLog = get(opt, 'showLog', null)
+    if (!isbol(showLog)) {
+        showLog = true
+    }
+    else {
+        showLog = cbol(showLog)
+    }
+
+    //指定特定方法, 流程為fetch至inspect至parse
+    if (method !== 'auto') {
+
+        let methodMap = {
+            'curl': { fn: () => _tryCurl(url, opt), name: METHOD_CURL },
+            'playwright': { fn: () => _tryPlaywrightHeadless(url, opt), name: METHOD_PW_HEADLESS },
+            'playwright-headed': { fn: () => _tryPlaywrightHead(url, opt), name: METHOD_PW_HEADED },
+            'camofox': { fn: () => _tryCamofox(url, opt), name: METHOD_CAMOFOX },
+        }
+        let spec = methodMap[method]
+        if (!spec) {
+            let valid = Object.keys(methodMap).join(', ')
+            return _finalize(url, { success: false, reason: 'invalid-method', message: `unknown method "${method}" (valid: ${valid})` }, [])
+        }
+
+        let r = await spec.fn()
+        if (!r.success) {
+            return _finalize(url, r, [{ method: spec.name, ..._summarizeFail(r) }])
+        }
+
+        let inspection = inspectHtml(r.html)
+        if (!inspection.pass) {
+            if (showLog) {
+                console.warn('[fetchWeb] ' + spec.name + ' blocked: ' + inspection.message)
+            }
+            return _finalize(url, { success: false, reason: inspection.type, message: inspection.message },
+                [{ method: spec.name, status: 'blocked', type: inspection.type, message: inspection.message }])
+        }
+
+        //解析結果決定attempt狀態, 解析失敗時attempt應記blocked(與頂層status:error一致),
+        //不可無條件記success, 否則會出現「頂層status:error但attempts[0].status:success」自相矛盾
+        let parsed = _applyParse(r, url, parse)
+        if (parsed.success) {
+            return _finalize(url, parsed, [{ method: spec.name, status: 'success', contentLength: r.html.length }])
+        }
+        return _finalize(url, { success: false, reason: parsed.reason || 'parse-failed', message: parsed.message || 'content extraction failed' },
+            [{ method: spec.name, status: 'blocked', type: DETECT_EMPTY, message: parsed.message || 'parse failed' }])
+    }
+
+    //auto模式
+    let depth = get(opt, '_depth', null)
+    if (!isp0int(depth)) {
+        depth = 0
+    }
+    else {
+        depth = cint(depth)
+    }
+
+    //判識B, 網址參數中含真實網址, 提取後重走完整流程
+    if (depth &lt; MAX_REDIRECT_DEPTH) {
+        let target = _extractRedirectTarget(url)
+        if (target) {
+            if (showLog) {
+                console.log('[fetchWeb] redirect param extracted → ' + target)
+            }
+            return fetchWeb(target, { ...opt, _depth: depth + 1 })
+        }
+    }
+
+    //判識D, 已知須Camofox之網站, 跳過方法①②③直接方法④
+    if (_requiresCamofox(url)) {
+        if (showLog) {
+            console.log('[fetchWeb] camofox-required domain, jumping to camofox ...')
+        }
+        let r = await _tryCamofox(url, opt)
+        if (r.success) {
+            let parsed = _applyParse(r, url, parse)
+            if (parsed.success) {
+                return _finalize(url, parsed, [{ method: METHOD_CAMOFOX, status: 'success', contentLength: r.html.length }])
+            }
+            return _finalize(url, { success: false, reason: parsed.reason || 'parse-failed', message: parsed.message || 'content extraction failed' },
+                [{ method: METHOD_CAMOFOX, status: 'blocked', type: DETECT_EMPTY, message: parsed.message || 'parse failed' }])
+        }
+        return _finalize(url, r, [{ method: METHOD_CAMOFOX, ..._summarizeFail(r) }])
+    }
+
+    //判識C, 已知須headed模式之網站, 跳過curl與headless直接headed
+    if (_requiresHeaded(url)) {
+        if (showLog) {
+            console.log('[fetchWeb] headed-required domain, jumping to playwright-headed ...')
+        }
+        return _autoEscalate(url, opt, parse, showLog, { redirect: false, skipCurl: true, skipHeadless: true })
+    }
+
+    //判識A, 已知JS轉址域名, 跳過curl直接Playwright並等待轉址
+    if (_requiresJsRedirect(url)) {
+        if (showLog) {
+            console.log('[fetchWeb] JS redirect domain, skipping curl ...')
+        }
+        return _autoEscalate(url, opt, parse, showLog, { redirect: true, skipCurl: true })
+    }
+
+    //判識E, 已知SPA網站, 跳過curl直接Playwright無頭
+    if (_requiresHeadless(url)) {
+        if (showLog) {
+            console.log('[fetchWeb] headless-required SPA domain, skipping curl ...')
+        }
+        return _autoEscalate(url, opt, parse, showLog, { redirect: false, skipCurl: true })
+    }
+
+    //階梯式升級, curl至headless至headed至camofox
+    return _autoEscalate(url, opt, parse, showLog, { redirect: false, skipCurl: false })
+}
+
+
+export { inspectHtml }
+export default fetchWeb
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri Aug 07 2026 06:06:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

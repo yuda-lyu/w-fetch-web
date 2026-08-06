@@ -1,0 +1,32 @@
+{
+  "name": "w-fetch-web",
+  "version": "1.0.0",
+  "main": "dist/w-fetch-web.umd.js",
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "jsdom": "^30.0.1",
+    "lodash-es": "^4.18.1",
+    "playwright": "^1.62.1",
+    "wsemi": "^1.8.67"
+  },
+  "devDependencies": {
+    "w-package-tools": "^1.1.12"
+  },
+  "scripts": {
+    "test": "mocha --parallel --timeout 60000",
+    "deploy": "gh-pages -d docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuda-lyu/w-fetch-web.git"
+  },
+  "keywords": [
+    "package",
+    "tool",
+    "fetch",
+    "web",
+    "nodejs"
+  ],
+  "author": "yuda-lyu(semisphere)",
+  "license": "MIT"
+}
