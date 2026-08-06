@@ -21,7 +21,7 @@ npm i w-fetch-web
 Note:
 - `fetchWebByCurl` needs `curl` in system PATH.
 - `fetchWebByPlaywrightHeadless` and `fetchWebByPlaywrightHead` need Chrome installed (playwright uses `channel: 'chrome'`).
-- `fetchWebByCamofox` needs an extra package: `npm i @askjo/camofox-browser`.
+- `fetchWebByCamofox` spawns the `@askjo/camofox-browser` server as a child process, and needs the Camoufox binaries fetched by that package's postinstall.
 
 #### Functions:
 | function | description |

@@ -1,7 +1,5 @@
 import { execFileSync, spawn } from 'child_process'
-import { fileURLToPath } from 'url'
-import { dirname, resolve } from 'path'
-import { existsSync, statSync } from 'fs'
+import { dirname } from 'path'
 import get from 'lodash-es/get.js'
 import isstr from 'wsemi/src/isstr.mjs'
 import ispint from 'wsemi/src/ispint.mjs'
@@ -10,6 +8,7 @@ import cint from 'wsemi/src/cint.mjs'
 import delay from 'wsemi/src/delay.mjs'
 import getUrlErrorResult from './getUrlErrorResult.mjs'
 import getRetryWaitMs from './getRetryWaitMs.mjs'
+import resolveCamofoxServer from './resolveCamofoxServer.mjs'
 
 
 //方法名稱
@@ -23,30 +22,6 @@ let DEFAULT_SNAPSHOT_RETRIES = 3
 let DEFAULT_SNAPSHOT_WAIT_MS = 5000
 let SNAPSHOT_MIN_CHARS = 50
 let IS_WIN = process.platform === 'win32'
-
-
-//由本模組位置與cwd向上尋找node_modules/@askjo/camofox-browser
-function _findCamofoxDir() {
-
-    let thisDir = dirname(fileURLToPath(import.meta.url))
-    let candidates = [
-        resolve(thisDir, '../node_modules/@askjo/camofox-browser'),
-        resolve(thisDir, '../../node_modules/@askjo/camofox-browser'),
-        resolve(thisDir, '../../../node_modules/@askjo/camofox-browser'),
-        resolve(process.cwd(), 'node_modules/@askjo/camofox-browser'),
-    ]
-
-    for (let p of candidates) {
-        try {
-            if (existsSync(p) && statSync(p).isDirectory()) {
-                return p
-            }
-        }
-        catch {}
-    }
-
-    return null
-}
 
 
 //Windows殺整棵進程樹, Unix用SIGTERM
@@ -229,14 +204,15 @@ function snapshotToHtml(snapshot, pageTitle = '') {
  * 使用Camofox反偵測瀏覽器抓取網頁原始HTML，透過accessibility snapshot取得內容
  *
  * 流程：
- * 找到@askjo/camofox-browser安裝位置；
- * spawn `node server.js` 啟動Camofox server；
+ * 以Node模組解析機制取得已安裝之@askjo/camofox-browser之server.js位置；
+ * spawn `node <server.js>` 啟動Camofox server；
  * POST /tabs 建立tab；
  * GET /tabs/:id/snapshot 取accessibility snapshot(含內部重試)；
  * DELETE /tabs/:id 關閉tab；
  * 殺整棵server進程樹(Windows用taskkill /F /T，Unix用SIGTERM)
  *
- * 須另行安裝@askjo/camofox-browser，未安裝時回傳reason='camofox-not-found'
+ * 該套件之server.js無任何export且於top-level即無條件listen，故只能spawn為子行程執行，
+ * 不可直接import；解析不到安裝位置時回傳reason='camofox-not-found'
  *
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
@@ -278,9 +254,9 @@ async function fetchWebByCamofox(url, opt = {}) {
         return rErr
     }
 
-    //camofoxDir
-    let camofoxDir = _findCamofoxDir()
-    if (!camofoxDir) {
+    //camofoxServer
+    let camofoxServer = resolveCamofoxServer()
+    if (!camofoxServer) {
         return {
             status: 'error',
             url,
@@ -346,9 +322,9 @@ async function fetchWebByCamofox(url, opt = {}) {
         let serverProc = null
         try {
 
-            //啟動Camofox server
-            serverProc = spawn('node', ['server.js'], {
-                cwd: camofoxDir,
+            //啟動Camofox server, cwd須為套件目錄, 其camofox.config.json等設定由該處讀取
+            serverProc = spawn('node', [camofoxServer], {
+                cwd: dirname(camofoxServer),
                 stdio: ['ignore', 'pipe', 'pipe'],
                 env: { ...process.env, CAMOFOX_PORT: String(port) },
                 windowsHide: true,

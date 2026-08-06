@@ -1,11 +1,16 @@
 import assert from 'assert'
-import { existsSync } from 'fs'
-import { resolve } from 'path'
+import includes from 'lodash-es/includes.js'
 import fetchWebByCamofox, { snapshotToHtml } from '../src/fetchWebByCamofox.mjs'
+import resolveCamofoxServer from '../src/resolveCamofoxServer.mjs'
 
 
-//@askjo/camofox-browser為選用相依, 未安裝時fetchWebByCamofox會回傳camofox-not-found
-let camofoxInstalled = existsSync(resolve(process.cwd(), 'node_modules/@askjo/camofox-browser'))
+//@askjo/camofox-browser未安裝時, fetchWebByCamofox會回傳camofox-not-found
+let camofoxInstalled = resolveCamofoxServer() !== null
+
+
+//實際抓取會spawn Camofox server並啟動反偵測瀏覽器(耗時且須已下載Camoufox執行檔),
+//故預設跳過, 須驗證時以環境變數WFETCHWEB_TEST_CAMOFOX=1開啟
+let testCamofox = process.env.WFETCHWEB_TEST_CAMOFOX === '1'
 
 
 //依實作組出預期HTML外殼
@@ -116,6 +121,24 @@ describe('fetchWebByCamofox', function() {
             let t = await fetchWebByCamofox('https://example.com/')
             let r = [t.status, t.reason, t.method, t.attempts]
             let rr = ['error', 'camofox-not-found', 'camofox', 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('抓取正常網頁回傳snapshot轉換後之HTML', async function() {
+            if (!camofoxInstalled || !testCamofox) {
+                this.skip()
+            }
+            this.timeout(300000)
+            let t = await fetchWebByCamofox('https://example.com/', { maxRetries: 0 })
+            let r = [
+                t.status,
+                t.method,
+                t.attempts,
+                t.snapshotChars > 50,
+                includes(t.html, '<article>'),
+                includes(t.html, 'Example Domain'),
+            ]
+            let rr = ['success', 'camofox', 1, true, true, true]
             assert.strict.deepEqual(r, rr)
         })
 
