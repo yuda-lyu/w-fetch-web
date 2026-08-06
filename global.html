@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li></ul>
     
 </nav>
 
@@ -1011,19 +1011,20 @@ await test()
     <dt class="tag-description">Description:</dt>
     <dd class="tag-description"><ul class="dummy"><li><p>使用Camofox反偵測瀏覽器抓取網頁原始HTML，透過accessibility snapshot取得內容</p>
 <p>流程：
-找到@askjo/camofox-browser安裝位置；
-spawn <code>node server.js</code> 啟動Camofox server；
+以Node模組解析機制取得已安裝之@askjo/camofox-browser之server.js位置；
+spawn <code>node &lt;server.js&gt;</code> 啟動Camofox server；
 POST /tabs 建立tab；
 GET /tabs/:id/snapshot 取accessibility snapshot(含內部重試)；
 DELETE /tabs/:id 關閉tab；
 殺整棵server進程樹(Windows用taskkill /F /T，Unix用SIGTERM)</p>
-<p>須另行安裝@askjo/camofox-browser，未安裝時回傳reason='camofox-not-found'</p></li></ul></dd>
+<p>該套件之server.js無任何export且於top-level即無條件listen，故只能spawn為子行程執行，
+不可直接import；解析不到安裝位置時回傳reason='camofox-not-found'</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWebByCamofox.mjs.html">fetchWebByCamofox.mjs</a>, <a href="fetchWebByCamofox.mjs.html#line270">line 270</a>
+        <a href="fetchWebByCamofox.mjs.html">fetchWebByCamofox.mjs</a>, <a href="fetchWebByCamofox.mjs.html#line246">line 246</a>
     </li></ul></dd>
     
 
@@ -3805,6 +3806,129 @@ await test()
 
     
 
+    <h4 class="name" id="resolveCamofoxServer"><span class="type-signature"></span>resolveCamofoxServer<span class="signature">()</span><span class="type-signature"> &rarr; {String|null}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>以Node模組解析機制取得已安裝之@askjo/camofox-browser之server.js位置</p>
+<p>該套件之server.js無任何export，且於top-level即無條件listen，故只能spawn為子行程執行，
+不可直接import，否則載入本套件時即會於行程內啟動Camofox server；
+先由本模組位置解析，不論套件被hoist至哪一層node_modules皆可正確找到，
+再由使用端cwd解析，供打包後(import.meta.url已失真)之執行環境使用</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="resolveCamofoxServer.mjs.html">resolveCamofoxServer.mjs</a>, <a href="resolveCamofoxServer.mjs.html#line26">line 26</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import resolveCamofoxServer from './src/resolveCamofoxServer.mjs'
+
+console.log(resolveCamofoxServer())
+// => 'D:\\my-proj\\node_modules\</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳server.js之絕對路徑字串，未安裝時回傳null</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">String</span>
+|
+
+<span class="param-type">null</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="snapshotToHtml"><span class="type-signature"></span>snapshotToHtml<span class="signature">(snapshot, pageTitle<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {String}</span></h4>
 
     
@@ -3823,7 +3947,7 @@ banner、navigation等結構容器標記</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWebByCamofox.mjs.html">fetchWebByCamofox.mjs</a>, <a href="fetchWebByCamofox.mjs.html#line113">line 113</a>
+        <a href="fetchWebByCamofox.mjs.html">fetchWebByCamofox.mjs</a>, <a href="fetchWebByCamofox.mjs.html#line88">line 88</a>
     </li></ul></dd>
     
 
@@ -4044,7 +4168,7 @@ console.log(snapshotToHtml('- heading "abc" [level=1]\n- paragraph: def', 'abc')
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri Aug 07 2026 06:06:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri Aug 07 2026 07:52:49 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
