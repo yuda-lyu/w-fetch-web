@@ -1,16 +1,16 @@
 {
   "name": "w-fetch-web",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "main": "dist/w-fetch-web.umd.js",
   "dependencies": {
     "@askjo/camofox-browser": "^1.13.1",
     "@mozilla/readability": "^0.6.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.62.1",
-    "wsemi": "^1.8.77"
+    "wsemi": "^1.8.78"
   },
   "devDependencies": {
-    "w-package-tools": "^1.1.13"
+    "w-package-tools": "^1.1.14"
   },
   "scripts": {
     "test": "mocha --parallel --timeout 60000",
