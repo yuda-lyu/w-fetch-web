@@ -1,9 +1,9 @@
 {
   "name": "w-fetch-web",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "main": "dist/w-fetch-web.umd.js",
   "dependencies": {
-    "@askjo/camofox-browser": "^1.13.1",
+    "@askjo/camofox-browser": "1.13.1",
     "@mozilla/readability": "^0.6.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.62.1",
