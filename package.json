@@ -14,6 +14,7 @@
   },
   "scripts": {
     "test": "mocha --parallel --timeout 60000",
+    "cov": "node test/tools/runCoverage.mjs",
     "deploy": "gh-pages -d docs"
   },
   "repository": {

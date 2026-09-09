@@ -12,8 +12,10 @@ describe('getRetryWaitMs', function() {
     })
 
     it('非正整數回傳初始等待毫秒', function() {
-        let r = map([null, undefined, -1, 1.5, 'abc', {}], (v) => getRetryWaitMs(v))
-        let rr = [3000, 3000, 3000, 3000, 3000, 3000]
+
+        //0須一併涵蓋: attempt由1起算, 0不在契約內, 不可回0否則退避失效
+        let r = map([0, null, undefined, -1, 1.5, 'abc', {}], (v) => getRetryWaitMs(v))
+        let rr = [3000, 3000, 3000, 3000, 3000, 3000, 3000]
         assert.strict.deepEqual(r, rr)
     })
 

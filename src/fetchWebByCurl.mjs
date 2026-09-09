@@ -1,20 +1,14 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import get from 'lodash-es/get.js'
-import isestr from 'wsemi/src/isestr.mjs'
-import ispint from 'wsemi/src/ispint.mjs'
-import isp0int from 'wsemi/src/isp0int.mjs'
-import cint from 'wsemi/src/cint.mjs'
 import delay from 'wsemi/src/delay.mjs'
 import getUrlErrorResult from './getUrlErrorResult.mjs'
-import getRetryWaitMs from './getRetryWaitMs.mjs'
+import { fetchedAtIso } from './fetchedAt.mjs'
+import getRetryWaitMs, { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import { getOptPInt, getOptP0Int, getOptStr } from './getOpt.mjs'
+import { METHOD_CURL as METHOD } from './constants.mjs'
 
-
-//方法名稱
-let METHOD = 'curl'
 
 //預設值
-let DEFAULT_MAX_RETRIES = 5
 let DEFAULT_TIMEOUT_MS = 15000
 let MIN_HTML_LENGTH = 100
 let DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -41,7 +35,7 @@ let execFilePm = promisify(execFile)
  * @param {String} [opt.userAgent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'] 輸入自訂User-Agent字串
  * @param {String} [opt.referer='https://www.google.com/'] 輸入自訂Referer字串，預設'https://www.google.com/'
  * @param {String} [opt.acceptLanguage='en-US,en;q=0.9,zh-TW;q=0.8'] 輸入自訂Accept-Language字串，預設'en-US,en;q=0.9,zh-TW;q=0.8'
- * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,httpCode,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}，本函數不會reject
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,httpCode,contentKind,method,fetchedAt,attempts}（contentKind恆為'raw'），失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}，本函數不會reject
  * @example
  *
  * import fetchWebByCurl from './src/fetchWebByCurl.mjs'
@@ -66,7 +60,7 @@ let execFilePm = promisify(execFile)
 async function fetchWebByCurl(url, opt = {}) {
 
     //fetchedAt
-    let fetchedAt = new Date().toISOString()
+    let fetchedAt = fetchedAtIso()
 
     //check url
     let rErr = getUrlErrorResult(url, METHOD, fetchedAt)
@@ -75,40 +69,19 @@ async function fetchWebByCurl(url, opt = {}) {
     }
 
     //timeoutMs
-    let timeoutMs = get(opt, 'timeoutMs', null)
-    if (!ispint(timeoutMs)) {
-        timeoutMs = DEFAULT_TIMEOUT_MS
-    }
-    else {
-        timeoutMs = cint(timeoutMs)
-    }
+    let timeoutMs = getOptPInt(opt, 'timeoutMs', DEFAULT_TIMEOUT_MS)
 
     //maxRetries
-    let maxRetries = get(opt, 'maxRetries', null)
-    if (!isp0int(maxRetries)) {
-        maxRetries = DEFAULT_MAX_RETRIES
-    }
-    else {
-        maxRetries = cint(maxRetries)
-    }
+    let maxRetries = getOptP0Int(opt, 'maxRetries', DEFAULT_MAX_RETRIES)
 
     //ua
-    let ua = get(opt, 'userAgent', null)
-    if (!isestr(ua)) {
-        ua = DEFAULT_UA
-    }
+    let ua = getOptStr(opt, 'userAgent', DEFAULT_UA)
 
     //referer
-    let referer = get(opt, 'referer', null)
-    if (!isestr(referer)) {
-        referer = DEFAULT_REFERER
-    }
+    let referer = getOptStr(opt, 'referer', DEFAULT_REFERER)
 
     //acceptLang
-    let acceptLang = get(opt, 'acceptLanguage', null)
-    if (!isestr(acceptLang)) {
-        acceptLang = DEFAULT_ACCEPT_LANG
-    }
+    let acceptLang = getOptStr(opt, 'acceptLanguage', DEFAULT_ACCEPT_LANG)
 
     let lastReason = ''
     let lastMessage = ''
@@ -177,6 +150,7 @@ async function fetchWebByCurl(url, opt = {}) {
                 url,
                 html,
                 htmlLength: html.length,
+                contentKind: 'raw',
                 httpCode,
                 method: METHOD,
                 fetchedAt,
@@ -205,7 +179,6 @@ async function fetchWebByCurl(url, opt = {}) {
         }
     }
 
-    return { status: 'error', url, message: lastMessage || 'max retries exceeded', reason: lastReason || 'curl-error', method: METHOD, fetchedAt, attempts: maxRetries + 1 }
 }
 
 

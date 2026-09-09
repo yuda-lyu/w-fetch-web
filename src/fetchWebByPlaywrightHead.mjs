@@ -1,23 +1,9 @@
-import { chromium } from 'playwright'
-import get from 'lodash-es/get.js'
-import isbol from 'wsemi/src/isbol.mjs'
-import ispint from 'wsemi/src/ispint.mjs'
-import isp0int from 'wsemi/src/isp0int.mjs'
-import cint from 'wsemi/src/cint.mjs'
-import cbol from 'wsemi/src/cbol.mjs'
-import delay from 'wsemi/src/delay.mjs'
-import getUrlErrorResult from './getUrlErrorResult.mjs'
-import getRetryWaitMs from './getRetryWaitMs.mjs'
-import navigateWithRedirectWait from './navigateWithRedirectWait.mjs'
-import extractPageContent from './extractPageContent.mjs'
+import runPlaywright from './runPlaywright.mjs'
+import { METHOD_PW_HEADED as METHOD } from './constants.mjs'
+import { getOptBool } from './getOpt.mjs'
 
-
-//方法名稱
-let METHOD = 'playwright-headed'
 
 //預設值
-let DEFAULT_MAX_RETRIES = 5
-let DEFAULT_NAV_TIMEOUT_MS = 15000
 let DEFAULT_POST_NAV_WAIT_MS = 5000
 
 
@@ -93,6 +79,28 @@ async function _tryClickVerification(page) {
 }
 
 
+//導航後之處理: 隱藏webdriver標記已於開頁時完成, 此處負責驗證checkbox之偵測與點擊
+async function _afterNavigate(page, opt) {
+
+    let skipVerify = getOptBool(opt, 'skipVerificationClick', false)
+
+    let verificationClicked = false
+    if (!skipVerify) {
+        verificationClicked = await _tryClickVerification(page)
+    }
+
+    return { verificationClicked }
+}
+
+
+//開頁後之前置處理: 隱藏webdriver標記
+async function _onPage(page) {
+    await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => false })
+    })
+}
+
+
 /**
  * 使用Playwright有頭Chrome抓取網頁原始HTML，含驗證checkbox自動點擊
  *
@@ -110,7 +118,7 @@ async function _tryClickVerification(page) {
  * @param {Boolean} [opt.waitForRedirect=false] 輸入是否等待JS轉址完成布林值，預設false
  * @param {Boolean} [opt.skipVerificationClick=false] 輸入是否跳過驗證checkbox自動點擊布林值，預設false
  * @param {Integer} [opt.maxRetries=5] 輸入失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
- * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,verificationClicked,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,verificationClicked,method,fetchedAt,attempts}（contentKind為'raw'或'synthesized'，後者代表內容由Shadow DOM穿透後合成），失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject
  * @example
  *
  * import fetchWebByPlaywrightHead from './src/fetchWebByPlaywrightHead.mjs'
@@ -133,131 +141,18 @@ async function _tryClickVerification(page) {
  *
  */
 async function fetchWebByPlaywrightHead(url, opt = {}) {
-
-    //fetchedAt
-    let fetchedAt = new Date().toISOString()
-
-    //check url
-    let rErr = getUrlErrorResult(url, METHOD, fetchedAt)
-    if (rErr) {
-        return rErr
-    }
-
-    //navTimeout
-    let navTimeout = get(opt, 'navigationTimeoutMs', null)
-    if (!ispint(navTimeout)) {
-        navTimeout = DEFAULT_NAV_TIMEOUT_MS
-    }
-    else {
-        navTimeout = cint(navTimeout)
-    }
-
-    //postWait
-    let postWait = get(opt, 'postNavigationWaitMs', null)
-    if (!isp0int(postWait)) {
-        postWait = DEFAULT_POST_NAV_WAIT_MS
-    }
-    else {
-        postWait = cint(postWait)
-    }
-
-    //waitForRedirect
-    let waitForRedirect = get(opt, 'waitForRedirect', null)
-    if (!isbol(waitForRedirect)) {
-        waitForRedirect = false
-    }
-    else {
-        waitForRedirect = cbol(waitForRedirect)
-    }
-
-    //skipVerify
-    let skipVerify = get(opt, 'skipVerificationClick', null)
-    if (!isbol(skipVerify)) {
-        skipVerify = false
-    }
-    else {
-        skipVerify = cbol(skipVerify)
-    }
-
-    //maxRetries
-    let maxRetries = get(opt, 'maxRetries', null)
-    if (!isp0int(maxRetries)) {
-        maxRetries = DEFAULT_MAX_RETRIES
-    }
-    else {
-        maxRetries = cint(maxRetries)
-    }
-
-    let lastMessage = ''
-
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-        let browser = null
-        try {
-
-            browser = await chromium.launch({
-                headless: false,
-                channel: 'chrome',
-                args: ['--disable-blink-features=AutomationControlled'],
-            })
-            let page = await browser.newPage()
-
-            //隱藏webdriver標記
-            await page.addInitScript(() => {
-                Object.defineProperty(navigator, 'webdriver', { get: () => false })
-            })
-
-            if (waitForRedirect) {
-                await navigateWithRedirectWait(page, url, navTimeout)
-            }
-            else {
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeout })
-                await page.waitForTimeout(postWait)
-            }
-
-            let verificationClicked = false
-            if (!skipVerify) {
-                verificationClicked = await _tryClickVerification(page)
-            }
-
-            let html = await extractPageContent(page)
-
-            return {
-                status: 'success',
-                url,
-                html,
-                htmlLength: html.length,
-                verificationClicked,
-                method: METHOD,
-                fetchedAt,
-                attempts: attempt,
-            }
-        }
-        catch (err) {
-            lastMessage = err.message || String(err)
-            if (attempt <= maxRetries) {
-                let ms = getRetryWaitMs(attempt)
-                process.stderr.write(`[fetchWebByPlaywrightHead] error: ${lastMessage}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
-                await delay(ms)
-                continue
-            }
-            return {
-                status: 'error',
-                url,
-                message: lastMessage,
-                reason: 'playwright-error',
-                method: METHOD,
-                fetchedAt,
-                attempts: attempt,
-            }
-        }
-        finally {
-            if (browser) {
-                await browser.close().catch(() => {})
-            }
-        }
-    }
-
-    return { status: 'error', url, message: lastMessage || 'max retries exceeded', reason: 'playwright-error', method: METHOD, fetchedAt, attempts: maxRetries + 1 }
+    return runPlaywright(url, opt, {
+        method: METHOD,
+        logName: 'fetchWebByPlaywrightHead',
+        defaultPostWaitMs: DEFAULT_POST_NAV_WAIT_MS,
+        launch: {
+            headless: false,
+            channel: 'chrome',
+            args: ['--disable-blink-features=AutomationControlled'],
+        },
+        onPage: _onPage,
+        afterNavigate: _afterNavigate,
+    })
 }
 
 

@@ -1,0 +1,159 @@
+import isobj from 'wsemi/src/isobj.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
+import inspectHtml from './inspectHtml.mjs'
+import parseArticle from './parseArticle.mjs'
+import { adapt, summarizeFail, finalize } from './finalizeResult.mjs'
+import { DETECT_EMPTY, DETECT_REDIRECT, PASS_INSPECTION } from './constants.mjs'
+import fetchWebByCurl from './fetchWebByCurl.mjs'
+import fetchWebByPlaywrightHeadless from './fetchWebByPlaywrightHeadless.mjs'
+import fetchWebByPlaywrightHead from './fetchWebByPlaywrightHead.mjs'
+import fetchWebByCamofox from './fetchWebByCamofox.mjs'
+
+
+//四個抓取函數之實際實作
+let REAL_FETCHERS = Object.freeze({
+    curl: fetchWebByCurl,
+    playwrightHeadless: fetchWebByPlaywrightHeadless,
+    playwrightHead: fetchWebByPlaywrightHead,
+    camofox: fetchWebByCamofox,
+})
+
+
+//測試接縫: 允許以opt._fetchers置換個別抓取函數
+//階梯升級須走完四階才能驗證, 真跑等於每條測試啟動Chrome兩次加camofox一次, 且有頭模式會彈實體視窗,
+//無法作為常規測試; 故開此接縫供測試以假抓取函數精確驅動各升級情境。
+//底線前綴表示內部用途, 未傳時一律使用真實抓取函數, 生產環境不應傳入
+function _fetcherOf(opt, key) {
+    let fs = opt?._fetchers
+    if (isobj(fs) && isfun(fs[key])) {
+        return fs[key]
+    }
+    return REAL_FETCHERS[key]
+}
+
+
+//抓取函數呼叫, 含結構適配
+async function _tryCurl(url, opt) {
+    return adapt(await _fetcherOf(opt, 'curl')(url, opt))
+}
+async function _tryPlaywrightHeadless(url, opt, redirect = false) {
+    return adapt(await _fetcherOf(opt, 'playwrightHeadless')(url, { ...opt, waitForRedirect: redirect }))
+}
+async function _tryPlaywrightHead(url, opt, redirect = false) {
+    return adapt(await _fetcherOf(opt, 'playwrightHead')(url, { ...opt, waitForRedirect: redirect }))
+}
+async function _tryCamofox(url, opt) {
+    return adapt(await _fetcherOf(opt, 'camofox')(url, opt))
+}
+
+
+//依parse決定是否解析文章
+//僅於抓取成功時呼叫, 故不再重複檢核r.success
+async function _applyParse(r, url, parse, adapters) {
+    if (!parse) {
+        return r
+    }
+    let parsed = await parseArticle(r.html, url, adapters)
+    if (!parsed.success) {
+        return parsed
+    }
+    let out = { ...parsed, method: r.method }
+    if (r.snapshot) {
+        out.snapshot = r.snapshot
+    }
+    return out
+}
+
+
+//各階之執行方式, 以step.key對應
+//轉址旗標於執行時才讀取, 故前一階若被判為轉址包裝頁, 後續Playwright階即改以等待轉址方式抓取
+let _FETCH_BY_KEY = {
+    curl: (url, opt) => _tryCurl(url, opt),
+    headless: (url, opt, redirect) => _tryPlaywrightHeadless(url, opt, redirect),
+    headed: (url, opt, redirect) => _tryPlaywrightHead(url, opt, redirect),
+    camofox: (url, opt) => _tryCamofox(url, opt),
+}
+
+
+/**
+ * 依序執行計畫中各階，首個取得可用內容者勝出
+ *
+ * 轉址旗標之後續變化由本函數擁有：某階被判為轉址包裝頁時，後續之Playwright階改以等待轉址方式抓取
+ *
+ * @param {String} url 輸入待抓取網址字串
+ * @param {Object} opt 輸入設定物件
+ * @param {Boolean} parse 輸入是否解析文章布林值
+ * @param {Boolean} showLog 輸入是否顯示過程訊息布林值
+ * @param {Array} adapters 輸入站台adapter陣列
+ * @param {Array} plan 輸入step描述陣列，由buildPlan產生
+ * @param {Boolean} redirect 輸入轉址旗標初值
+ * @returns {Promise} 回傳Promise，resolve回傳對外之結果物件，本函數不會reject
+ */
+//依序執行計畫中各階, 首個取得可用內容者勝出; 全數未果則彙整attempts回error
+async function runPlan(url, opt, parse, showLog, adapters, plan, redirect) {
+
+    let attempts = []
+
+    for (let step of plan) {
+
+        let tag = step.label + (redirect && step.redirectAware ? ' (redirect)' : '')
+        if (showLog) {
+            console.log('[fetchWeb] trying ' + tag + ' ...')
+        }
+
+        let r = await _FETCH_BY_KEY[step.key](url, opt, redirect)
+        let method = r.method || step.method
+
+        //抓取失敗
+        if (!r.success) {
+            attempts.push({ method, ...summarizeFail(r) })
+            if (showLog) {
+                console.warn('[fetchWeb] ' + tag + ' failed: ' + r.message)
+            }
+            continue
+        }
+
+        //內容判識
+        //合成內容(Shadow DOM穿透或accessibility snapshot)之標籤結構已被剝除,
+        //故以contentKind告知判識器只比對semantic類判準, 詳見inspectHtml之DETECTORS註解
+        let inspection = step.inspect ? inspectHtml(r.html, { contentKind: r.contentKind }) : PASS_INSPECTION
+        if (!inspection.pass) {
+            attempts.push({ method, status: 'blocked', type: inspection.type, message: inspection.message })
+            if (showLog) {
+                console.warn('[fetchWeb] ' + tag + ' blocked: ' + inspection.message)
+            }
+
+            //判為轉址包裝頁者, 後續之Playwright階改以等待轉址方式抓取
+            if (inspection.type === DETECT_REDIRECT) {
+                redirect = true
+            }
+            continue
+        }
+
+        //解析
+        let parsed = await _applyParse(r, url, parse, adapters)
+        if (parsed.success) {
+            //此處記的是抓取器取回之原始HTML長度, 與頂層contentLength(解析後之正文長度)不同,
+            //故另名htmlLength, 避免同名不同義
+            attempts.push({ method, status: 'success', htmlLength: r.html.length })
+            return finalize(url, parsed, attempts)
+        }
+
+        //解析失敗(SPA與JS渲染頁面)視為empty, 續下一階
+        attempts.push({ method, status: 'blocked', type: DETECT_EMPTY, reason: parsed.reason, message: parsed.message || 'parse failed' })
+        if (showLog) {
+            console.warn('[fetchWeb] ' + tag + ' parse failed: ' + (parsed.message || 'empty content') + ' — escalating')
+        }
+    }
+
+    //計畫內各階皆未取得可用內容
+    let last = attempts[attempts.length - 1]
+    return finalize(url, {
+        success: false,
+        reason: last?.reason || last?.type || 'unknown',
+        message: last?.message || 'all methods exhausted',
+    }, attempts)
+}
+
+
+export default runPlan

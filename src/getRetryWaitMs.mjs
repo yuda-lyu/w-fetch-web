@@ -1,5 +1,9 @@
-import isp0int from 'wsemi/src/isp0int.mjs'
+import ispint from 'wsemi/src/ispint.mjs'
 
+
+//重試政策: 本模組為其單一擁有者
+//預設重試次數(含初始共執行DEFAULT_MAX_RETRIES+1次)
+let DEFAULT_MAX_RETRIES = 5
 
 //線性退避之初始與上限毫秒
 let INITIAL_WAIT_MS = 3000
@@ -24,7 +28,9 @@ let MAX_WAIT_MS = 15000
 function getRetryWaitMs(attempt) {
 
     //check
-    if (!isp0int(attempt)) {
+    //attempt由1起算, 0不在契約內。此處須用ispint而非isp0int——
+    //isp0int允許0會使getRetryWaitMs(0)回0, 若日後共用retry runner採零起算即成熱迴圈
+    if (!ispint(attempt)) {
         return INITIAL_WAIT_MS
     }
 
@@ -32,4 +38,5 @@ function getRetryWaitMs(attempt) {
 }
 
 
+export { DEFAULT_MAX_RETRIES }
 export default getRetryWaitMs

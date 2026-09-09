@@ -18,10 +18,13 @@ function _esc(s) {
  * 由Playwright之page提取網頁HTML，可見文字過少時穿透Shadow DOM
  *
  * 先取page.content()，若估算可見文字已達門檻則直接回傳；否則遞迴穿透Shadow DOM取得
- * 各層innerText，再依換行切段重組為含article之簡易HTML，供Readability解析
+ * 各層innerText，再依換行切段重組為含article之簡易HTML，供Readability解析。
+ *
+ * 回傳一併標明內容形態：合成內容之標籤結構已被剝除，其可信的判識證據與原始文件不同，
+ * 故由本函數（唯一知道走了哪個出口者）標明，而非由下游猜測
  *
  * @param {Object} page 輸入Playwright之page物件
- * @returns {Promise} 回傳Promise，resolve回傳網頁HTML字串
+ * @returns {Promise} 回傳Promise，resolve回傳{html,contentKind}物件，contentKind為'raw'或'synthesized'
  * @example
  *
  * import { chromium } from 'playwright'
@@ -32,9 +35,9 @@ function _esc(s) {
  *     let browser = await chromium.launch({ headless: true, channel: 'chrome' })
  *     let page = await browser.newPage()
  *     await page.goto('https://example.com/')
- *     let html = await extractPageContent(page)
- *     console.log(html.length)
- *     // => 234
+ *     let { html, contentKind } = await extractPageContent(page)
+ *     console.log(html.length, contentKind)
+ *     // => 234 'raw'
  *     await browser.close()
  *
  * }
@@ -49,7 +52,7 @@ async function extractPageContent(page) {
     let html = await page.content()
     let visible = estimateVisibleText(html)
     if (visible.length >= SHADOW_VISIBLE_THRESHOLD) {
-        return html
+        return { html, contentKind: 'raw' }
     }
 
     //穿透Shadow DOM
@@ -77,14 +80,15 @@ async function extractPageContent(page) {
     })
 
     if (!shadow || shadow.length < SHADOW_MIN_CHARS) {
-        return html
+        return { html, contentKind: 'raw' }
     }
 
     //由Shadow DOM內文重組為簡易HTML
     let title = await page.title().catch(() => '')
     let titleEsc = _esc(title || '')
     let bodyEsc = _esc(shadow)
-    return `<!DOCTYPE html><html><head><title>${titleEsc}</title></head><body><article>${bodyEsc.split(/\n+/).map((p) => `<p>${p}</p>`).join('\n')}</article></body></html>`
+    let synth = `<!DOCTYPE html><html><head><title>${titleEsc}</title></head><body><article>${bodyEsc.split(/\n+/).map((p) => `<p>${p}</p>`).join('\n')}</article></body></html>`
+    return { html: synth, contentKind: 'synthesized' }
 }
 
 

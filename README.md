@@ -83,9 +83,20 @@ await test()
 | `method` | String | `'auto'` | `'auto'`、`'curl'`、`'playwright'`、`'playwright-headed'`、`'camofox'` |
 | `parse` | Boolean | `true` | 以Readability解析出`title`與`content`，`false`則回傳原始`html` |
 | `showLog` | Boolean | `true` | 是否顯示階梯升級過程訊息 |
+| `inspect` | Boolean | `true` | 是否以`inspectHtml`對抓取結果做原始內容判識，關閉後不因判定為挑戰頁或空內容而升級 |
+| `adapters` | Array | `[]` | 站台adapter陣列，用於覆寫特定站台之內容解析方式，形狀為`{id,match,parse}`，使用端註冊者優先於內建（gelonghui、bloomberg） |
 | `maxRetries` | Integer | `5` | 各抓取方法失敗時之最大重試次數，含初始共執行`maxRetries+1`次 |
 
 其餘設定會轉傳給實際執行抓取之函數，例如`timeoutMs`、`navigationTimeoutMs`、`postNavigationWaitMs`、`port`等。
+
+#### Attempts:
+`attempts`為各階嘗試之紀錄，`status`只有三種：
+
+| status | 意義 | 欄位 |
+| --- | --- | --- |
+| `success` | 取得並解析成功 | `method`、`htmlLength`（**原始HTML長度**，與頂層`contentLength`之正文長度不同） |
+| `failed` | 抓取本身失敗 | `method`、`reason`、`message` |
+| `blocked` | 取得內容但被判識或解析拒絕 | `method`、`type`、`reason`、`message` |
 
 #### Result of fetchWeb:
 ```alias
@@ -95,7 +106,7 @@ await test()
     url: 'https://example.com/',
     method: 'curl',
     fetchedAt: '2026-08-06 23:38:10',
-    attempts: [{ method: 'curl', status: 'success', contentLength: 559 }],
+    attempts: [{ method: 'curl', status: 'success', htmlLength: 559 }],
     title: 'Example Domain',
     content: 'This domain is for use in documentation examples without needing permission. ...',
     contentLength: 111,
@@ -107,7 +118,7 @@ await test()
     url: 'https://example.com/',
     method: 'curl',
     fetchedAt: '2026-08-06 23:38:10',
-    attempts: [{ method: 'curl', status: 'success', contentLength: 559 }],
+    attempts: [{ method: 'curl', status: 'success', htmlLength: 559 }],
     html: '<!doctype html><html lang="en"><head><title>Example Domain</title><lin ...',
 }
 

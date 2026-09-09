@@ -1,22 +1,13 @@
 import assert from 'assert'
 import includes from 'lodash-es/includes.js'
 import fetchWebByCurl from '../src/fetchWebByCurl.mjs'
-import serverForTest, { MARKER } from './tools/serverForTest.mjs'
+import { MARKER } from './tools/serverForTest.mjs'
+import useServer from './tools/useServer.mjs'
 
 
 describe('fetchWebByCurl', function() {
 
-    let svr = null
-
-    before(async function() {
-        svr = await serverForTest()
-    })
-
-    after(async function() {
-        if (svr) {
-            await svr.close()
-        }
-    })
+    let svr = useServer()
 
     it('非有效字串網址回傳invalid-url', async function() {
         let r = []
@@ -71,8 +62,12 @@ describe('fetchWebByCurl', function() {
 
     it('curl執行失敗時依maxRetries決定執行次數', async function() {
 
+        //Windows對127.0.0.1保留埠不會立即拒絕連線, 而是由curl的--max-time收尾,
+        //故本案例耗時必大於timeoutMs, 須高於mocha預設的2000ms方不誤判逾時
+        this.timeout(30000)
+
         //連線不到之埠號, 令curl必然失敗, maxRetries=0代表僅執行1次
-        let t = await fetchWebByCurl('http://127.0.0.1:1/abc', { maxRetries: 0, timeoutMs: 2000 })
+        let t = await fetchWebByCurl('http://127.0.0.1:1/abc', { maxRetries: 0, timeoutMs: 1000 })
         let r = [t.status, t.reason, t.method, t.attempts]
         let rr = ['error', 'curl-error', 'curl', 1]
         assert.strict.deepEqual(r, rr)
