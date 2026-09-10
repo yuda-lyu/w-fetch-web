@@ -1,7 +1,7 @@
-import delay from 'wsemi/src/delay.mjs'
 import getUrlErrorResult from './getUrlErrorResult.mjs'
 import { fetchedAtIso } from './fetchedAt.mjs'
-import getRetryWaitMs, { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import withRetry from './withRetry.mjs'
 import resolveCamofoxServer from './resolveCamofoxServer.mjs'
 import snapshotToHtml from './snapshotToHtml.mjs'
 import runCamofoxAttempt from './runCamofoxAttempt.mjs'
@@ -32,7 +32,10 @@ let SNAPSHOT_MIN_CHARS = 50
  * 單次嘗試之server啟動與清理皆由runCamofoxAttempt完成，故重試退避期間不會佔用該埠
  *
  * 該套件之server.js無任何export且於top-level即無條件listen，故只能spawn為子行程執行，
- * 不可直接import；解析不到安裝位置時回傳reason='camofox-not-found'
+ * 不可直接import；解析不到安裝位置時回傳reason='camofox-not-found'。
+ *
+ * 失敗歸因分三種：'camofox-not-found'為未安裝、'camofox-empty'為頁面確實無足量內容（重試無益）、
+ * 'camofox-error'為server啟動失敗、tab建立失敗或snapshot傳輸失敗（可重試）
  *
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
@@ -103,58 +106,44 @@ async function fetchWebByCamofox(url, opt = {}) {
     //maxRetries
     let maxRetries = getOptP0Int(opt, 'maxRetries', DEFAULT_MAX_RETRIES)
 
-    let lastMessage = ''
-    let lastReason = 'camofox-error'
+    //單次嘗試自行擁有server之生命週期, 回傳時資源已釋放, 故退避期間不會有殘留server佔用埠
+    let r = await withRetry(() => runCamofoxAttempt(url, {
+        camofoxServer,
+        port,
+        serverStartTimeoutMs,
+        snapshotRetries,
+        snapshotWaitMs,
+        snapshotMinChars: SNAPSHOT_MIN_CHARS,
+    }), {
+        maxRetries,
+        tag: 'fetchWebByCamofox',
+    })
 
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-
-        //單次嘗試自行擁有server之生命週期, 回傳時資源已釋放, 故退避期間不會有殘留server佔用埠
-        let r = await runCamofoxAttempt(url, {
-            camofoxServer,
-            port,
-            serverStartTimeoutMs,
-            snapshotRetries,
-            snapshotWaitMs,
-            snapshotMinChars: SNAPSHOT_MIN_CHARS,
-        })
-
-        if (r.ok) {
-            let pageTitle = r.snapshot.match(/heading\s+"(.+?)"\s*\[level=1\]/)?.[1] || ''
-            let html = snapshotToHtml(r.snapshot, pageTitle)
-            return {
-                status: 'success',
-                url,
-                html,
-                htmlLength: html.length,
-                contentKind: 'synthesized',
-                snapshot: r.snapshot,
-                snapshotChars: r.snapshotChars,
-                method: METHOD,
-                fetchedAt,
-                attempts: attempt,
-            }
-        }
-
-        lastMessage = r.message
-        lastReason = r.reason
-
-        if (attempt <= maxRetries) {
-            let ms = getRetryWaitMs(attempt)
-            process.stderr.write(`[fetchWebByCamofox] error: ${lastMessage}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})
-`)
-            await delay(ms)
-            continue
-        }
-
+    if (r.ok) {
+        let pageTitle = r.snapshot.match(/heading\s+"(.+?)"\s*\[level=1\]/)?.[1] || ''
+        let html = snapshotToHtml(r.snapshot, pageTitle)
         return {
-            status: 'error',
+            status: 'success',
             url,
-            message: lastMessage,
-            reason: lastReason,
+            html,
+            htmlLength: html.length,
+            contentKind: 'synthesized',
+            snapshot: r.snapshot,
+            snapshotChars: r.snapshotChars,
             method: METHOD,
             fetchedAt,
-            attempts: attempt,
+            attempts: r.attempts,
         }
+    }
+
+    return {
+        status: 'error',
+        url,
+        message: r.message,
+        reason: r.reason,
+        method: METHOD,
+        fetchedAt,
+        attempts: r.attempts,
     }
 }
 

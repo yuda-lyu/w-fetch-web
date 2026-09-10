@@ -7,7 +7,7 @@ import resolveCamofoxServer from '../../src/resolveCamofoxServer.mjs'
 //hasChrome不收在此: 它已是單一擁有者(test/tools/hasChrome.mjs), 且其「無頭與有頭須分別探測」
 //之說明必須與該函數同處, 搬過來只會讓註解離開它所守護的程式
 //
-//各開關之語意見下方各常數之註解; .mocharc.yml亦有一份對外說明
+//各開關之語意見下方各常數之註解, 此處為其唯一說明處
 
 
 //CI環境

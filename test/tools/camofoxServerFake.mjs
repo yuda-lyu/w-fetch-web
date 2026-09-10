@@ -13,6 +13,7 @@ import http from 'http'
  * @param {String} [opt.tabId='tab-1'] 輸入建立tab時回傳之tabId字串，預設'tab-1'
  * @param {Boolean} [opt.failCreate=false] 輸入建立tab是否失敗布林值，預設false
  * @param {Boolean} [opt.notReady=false] 輸入就緒探測是否一律回500布林值，用於驅動server未就緒分支，預設false
+ * @param {Boolean} [opt.failSnapshot=false] 輸入取snapshot時是否毀斷連線布林值，用於驅動傳輸層失敗分支，預設false
  * @param {Integer} [opt.port=0] 輸入監聽埠號整數，0代表由系統指派，預設0
  * @returns {Promise} 回傳Promise，resolve回傳{port,requests,close}物件
  */
@@ -23,6 +24,7 @@ function camofoxServerFake(opt = {}) {
         let tabId = opt.tabId || 'tab-1'
         let failCreate = opt.failCreate === true
         let notReady = opt.notReady === true
+        let failSnapshot = opt.failSnapshot === true
         let requests = []
         let iSnap = 0
 
@@ -64,6 +66,12 @@ function camofoxServerFake(opt = {}) {
 
             //取snapshot
             if (req.method === 'GET' && /^\/tabs\/[^/]+\/snapshot$/.test(pathname)) {
+
+                //毀斷連線而非回錯誤碼: 受測端之fetch會reject, 走的是傳輸層失敗路徑
+                if (failSnapshot) {
+                    req.socket.destroy()
+                    return
+                }
                 let s = snapshots[Math.min(iSnap, snapshots.length - 1)]
                 iSnap += 1
                 send(200, s || {})

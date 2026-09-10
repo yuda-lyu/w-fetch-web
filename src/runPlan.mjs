@@ -10,12 +10,18 @@ import fetchWebByPlaywrightHead from './fetchWebByPlaywrightHead.mjs'
 import fetchWebByCamofox from './fetchWebByCamofox.mjs'
 
 
-//四個抓取函數之實際實作
-let REAL_FETCHERS = Object.freeze({
-    curl: fetchWebByCurl,
-    playwrightHeadless: fetchWebByPlaywrightHeadless,
-    playwrightHead: fetchWebByPlaywrightHead,
-    camofox: fetchWebByCamofox,
+//抓取器註冊表, 以step.key為索引
+//
+//本套件的四種抓取方法在不同層各有一套稱呼, 此處是它們唯一的交會點:
+//  step.key      計畫內部之階代號(buildPlan.STEPS)
+//  fetcherKey    opt._fetchers之鍵名, 為對外文件化之測試接縫, 改名即破壞既有測試與呼叫端
+//  fn            實際抓取函數
+//新增第五種抓取方法時, 此表與buildPlan.STEPS各加一列即可, 不需再改其他地方
+let FETCHER_BY_KEY = Object.freeze({
+    curl: { fetcherKey: 'curl', fn: fetchWebByCurl },
+    headless: { fetcherKey: 'playwrightHeadless', fn: fetchWebByPlaywrightHeadless },
+    headed: { fetcherKey: 'playwrightHead', fn: fetchWebByPlaywrightHead },
+    camofox: { fetcherKey: 'camofox', fn: fetchWebByCamofox },
 })
 
 
@@ -23,27 +29,23 @@ let REAL_FETCHERS = Object.freeze({
 //階梯升級須走完四階才能驗證, 真跑等於每條測試啟動Chrome兩次加camofox一次, 且有頭模式會彈實體視窗,
 //無法作為常規測試; 故開此接縫供測試以假抓取函數精確驅動各升級情境。
 //底線前綴表示內部用途, 未傳時一律使用真實抓取函數, 生產環境不應傳入
-function _fetcherOf(opt, key) {
+function _fetcherOf(opt, fetcherKey, real) {
     let fs = opt?._fetchers
-    if (isobj(fs) && isfun(fs[key])) {
-        return fs[key]
+    if (isobj(fs) && isfun(fs[fetcherKey])) {
+        return fs[fetcherKey]
     }
-    return REAL_FETCHERS[key]
+    return real
 }
 
 
-//抓取函數呼叫, 含結構適配
-async function _tryCurl(url, opt) {
-    return adapt(await _fetcherOf(opt, 'curl')(url, opt))
-}
-async function _tryPlaywrightHeadless(url, opt, redirect = false) {
-    return adapt(await _fetcherOf(opt, 'playwrightHeadless')(url, { ...opt, waitForRedirect: redirect }))
-}
-async function _tryPlaywrightHead(url, opt, redirect = false) {
-    return adapt(await _fetcherOf(opt, 'playwrightHead')(url, { ...opt, waitForRedirect: redirect }))
-}
-async function _tryCamofox(url, opt) {
-    return adapt(await _fetcherOf(opt, 'camofox')(url, opt))
+//執行單一階之抓取, 含結構適配
+//是否帶入轉址旗標由step.redirectAware決定, 該欄位於buildPlan定義, 此處不另判斷階別——
+//先前由「_FETCH_BY_KEY之各條目要不要接第三參數」表達同一件事, 等於同一事實編碼於兩處
+async function _runFetcher(step, url, opt, redirect) {
+    let e = FETCHER_BY_KEY[step.key]
+    let fn = _fetcherOf(opt, e.fetcherKey, e.fn)
+    let optUse = step.redirectAware ? { ...opt, waitForRedirect: redirect } : opt
+    return adapt(await fn(url, optUse))
 }
 
 
@@ -62,16 +64,6 @@ async function _applyParse(r, url, parse, adapters) {
         out.snapshot = r.snapshot
     }
     return out
-}
-
-
-//各階之執行方式, 以step.key對應
-//轉址旗標於執行時才讀取, 故前一階若被判為轉址包裝頁, 後續Playwright階即改以等待轉址方式抓取
-let _FETCH_BY_KEY = {
-    curl: (url, opt) => _tryCurl(url, opt),
-    headless: (url, opt, redirect) => _tryPlaywrightHeadless(url, opt, redirect),
-    headed: (url, opt, redirect) => _tryPlaywrightHead(url, opt, redirect),
-    camofox: (url, opt) => _tryCamofox(url, opt),
 }
 
 
@@ -101,7 +93,7 @@ async function runPlan(url, opt, parse, showLog, adapters, plan, redirect) {
             console.log('[fetchWeb] trying ' + tag + ' ...')
         }
 
-        let r = await _FETCH_BY_KEY[step.key](url, opt, redirect)
+        let r = await _runFetcher(step, url, opt, redirect)
         let method = r.method || step.method
 
         //抓取失敗
@@ -118,7 +110,10 @@ async function runPlan(url, opt, parse, showLog, adapters, plan, redirect) {
         //故以contentKind告知判識器只比對semantic類判準, 詳見inspectHtml之DETECTORS註解
         let inspection = step.inspect ? inspectHtml(r.html, { contentKind: r.contentKind }) : PASS_INSPECTION
         if (!inspection.pass) {
-            attempts.push({ method, status: 'blocked', type: inspection.type, message: inspection.message })
+            //reason與type同值並非冗餘: status為'blocked'的紀錄有兩種來源(判識與解析失敗),
+            //兩者形狀須一致, 呼叫端才能一律讀reason取得失敗歸因而不必先分辨是哪一種。
+            //先前判識這一路不帶reason, 與JSDoc及README所宣稱者不符
+            attempts.push({ method, status: 'blocked', type: inspection.type, reason: inspection.type, message: inspection.message })
             if (showLog) {
                 console.warn('[fetchWeb] ' + tag + ' blocked: ' + inspection.message)
             }

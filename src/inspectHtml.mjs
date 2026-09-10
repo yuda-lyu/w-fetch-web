@@ -8,11 +8,25 @@ import { DETECT_PASS, DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMP
 let WRAPPER_TITLES = ['google news', 'redirecting', 'loading', 'msn']
 
 
+//「幾乎無實質內容」之可見文字上限
+//
+//凡靠字串比對的弱判準皆須搭配本閘門, 否則談論反爬蟲的正常文章一律被誤殺。
+//攔阻頁與正常文章在此維度上相距極遠, 故閘門有很大的安全餘裕:
+//  攔阻頁     實測典型頁可見文字約64字
+//  正常文章   實測13個真實頁面(見 test/tools/probeThreshold.mjs), 判定全部符合預期;
+//             其中5個內文同時含captcha與challenge之維基條目, 可見文字為3.0萬至8.7萬,
+//             對本閘門有61至174倍餘裕
+//
+//已知風險帶為「可見文字介於200至500且內文含關鍵字」之頁面: 低於200者另由empty判識攔下,
+//高於500者不受弱判準影響。實測樣本中落在該帶者皆不含關鍵字
+let SPARSE_VISIBLE_MAX = 500
+
+
 //反爬蟲攔阻頁之標題前綴
 //以前綴而非全等比對: 真實頁面標題常帶尾綴, 實測「Just a moment...」「Just a moment…」
 //「Just a moment - 站名」在全等比對下全部漏判, 而漏判之攔阻頁文案長度多超過MIN_CONTENT,
 //會被Readability解析成功而當作文章回傳
-let CHALLENGE_TITLE_PREFIXES = ['just a moment', 'just a quick check', 'checking your browser']
+let CHALLENGE_TITLE_PREFIXES = ['just a moment', 'just a quick check', 'checking your browser', 'attention required']
 
 
 //反爬蟲挑戰頁專屬之資源位址
@@ -87,7 +101,7 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'Cloudflare/anti-bot challenge',
         evidence: 'semantic',
-        test: (c) => CHALLENGE_TITLE_PREFIXES.some((t) => c.titleLower.startsWith(t)) || c.titleLower.includes('attention required'),
+        test: (c) => CHALLENGE_TITLE_PREFIXES.some((t) => c.titleLower.startsWith(t)),
     },
     {
 
@@ -98,7 +112,7 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'anti-bot challenge resource',
         evidence: 'structural',
-        test: (c) => c.visible.length < 500 && CHALLENGE_RESOURCES.some((v) => c.lower.includes(v)),
+        test: (c) => CHALLENGE_RESOURCES.some((v) => c.lower.includes(v)),
     },
     {
 
@@ -110,7 +124,7 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'generic CAPTCHA',
         evidence: 'semantic',
-        test: (c) => c.visible.length < 500 && c.lower.includes('captcha') && c.lower.includes('challenge'),
+        test: (c) => c.lower.includes('captcha') && c.lower.includes('challenge'),
     },
     {
         type: DETECT_CAPTCHA,
@@ -122,7 +136,7 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'Cloudflare Turnstile',
         evidence: 'structural',
-        test: (c) => c.visible.length < 500 && c.lower.includes('cf-turnstile'),
+        test: (c) => c.lower.includes('cf-turnstile'),
     },
     {
         type: DETECT_CAPTCHA,
@@ -140,13 +154,13 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'access denied (WAF/CDN block)',
         evidence: 'semantic',
-        test: (c) => c.titleLower === 'access denied' || (c.lower.includes('access denied') && c.lower.includes('edgesuite.net')),
+        test: (c) => c.titleLower.startsWith('access denied') || (c.lower.includes('access denied') && c.lower.includes('edgesuite.net')),
     },
     {
         type: DETECT_CAPTCHA,
         message: 'X/Twitter error page',
         evidence: 'semantic',
-        test: (c) => c.visible.length < 500 && c.lower.includes('something went wrong') && (c.lower.includes('x.com') || c.lower.includes('twitter.com')),
+        test: (c) => c.lower.includes('something went wrong') && (c.lower.includes('x.com') || c.lower.includes('twitter.com')),
     },
 
     //驗證頁面
@@ -162,6 +176,10 @@ let DETECTORS = [
         type: DETECT_REDIRECT,
         message: 'meta refresh redirect',
         evidence: 'structural',
+
+        //比對的是HTML標籤結構而非內文字串: 正常文章即使談論meta refresh, 其範例碼亦已被轉義,
+        //不會命中, 故不需內容量閘門
+        anyContent: true,
         test: (c) => (c.html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+url=["']?([^"'\s>]*)["']?/i)?.[1] || '').replace(/[\\'"\s]/g, '').length > 0,
     },
     {
@@ -179,7 +197,7 @@ let DETECTORS = [
         type: DETECT_REDIRECT,
         message: (c) => 'platform wrapper: "' + c.title + '"',
         evidence: 'semantic',
-        test: (c) => c.visible.length < 500 && WRAPPER_TITLES.some((t) => c.titleLower.includes(t)),
+        test: (c) => WRAPPER_TITLES.some((t) => c.titleLower.includes(t)),
     },
 
     //空內容與無實質可見文字
@@ -187,6 +205,9 @@ let DETECTORS = [
         type: DETECT_EMPTY,
         message: (c) => 'minimal visible text (' + c.visible.length + ' chars in ' + c.html.length + ' bytes HTML)',
         evidence: 'semantic',
+
+        //本身即為內容量判準, 再套閘門為同義反覆
+        anyContent: true,
         test: (c) => c.html.length > 5000 && c.visible.length < 200,
     },
 ]
@@ -234,6 +255,16 @@ function inspectHtml(html, opt = {}) {
         if (isSynth && d.evidence === 'structural') {
             continue
         }
+
+        //內容量閘門一律預設套用, 只有明確標記anyContent者例外。
+        //預設為「套用」而非「不套用」, 是因為只要判準含字串比對, 正常文章談論該主題即會命中,
+        //而攔阻頁與談論攔阻的文章之分野正是內容量。先前由各判識器自行決定要不要寫這個條件,
+        //結果是17個判識器中只有5個有, 其餘同型者無——實測一篇1000字談反爬蟲的正常文章
+        //會被human verification、server security block、PerimeterX三項誤判為攔阻頁
+        if (!d.anyContent && c.visible.length >= SPARSE_VISIBLE_MAX) {
+            continue
+        }
+
         if (d.test(c)) {
             return { pass: false, type: d.type, message: isfun(d.message) ? d.message(c) : d.message }
         }

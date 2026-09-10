@@ -77,7 +77,10 @@ describe('fetchWeb', function() {
             let rr = [
                 'error',
                 'Cloudflare/anti-bot challenge',
-                [{ method: 'curl', status: 'blocked', type: 'captcha', message: 'Cloudflare/anti-bot challenge' }],
+
+                //blocked有兩種來源(判識與解析失敗), 兩者形狀一致故呼叫端可一律讀reason;
+                //判識所致者其reason與type同值
+                [{ method: 'curl', status: 'blocked', type: 'captcha', reason: 'captcha', message: 'Cloudflare/anti-bot challenge' }],
             ]
             assert.strict.deepEqual(r, rr)
         })

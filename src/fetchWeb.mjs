@@ -32,7 +32,7 @@ import { getOptStr, getOptBool, getOptArr, getOptP0Int } from './getOpt.mjs'
  * @param {Object} [opt._fetchers=null] 輸入置換抓取函數之物件，僅供測試使用，鍵可為'curl'、'playwrightHeadless'、'playwrightHead'、'camofox'，值為與對應fetchWebByXxx同簽章之函數，未給之鍵沿用實際實作，預設null
  * @param {Boolean} [opt.showLog=true] 輸入是否顯示階梯升級過程訊息布林值，預設true
  * @param {Integer} [opt.maxRetries=5] 輸入各抓取函數失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
- * @returns {Promise} 回傳Promise，resolve回傳結果物件，其中attempts為各階嘗試紀錄陣列，成功之紀錄為{method,status:'success',htmlLength}(htmlLength為原始HTML長度，與頂層contentLength之正文長度不同)，失敗為{method,status:'failed',reason,message}，被判識或解析失敗為{method,status:'blocked',type,reason,message}；parse=true成功時為{status:'success',url,title,content,contentLength,method,fetchedAt,attempts}，parse=false成功時為{status:'success',url,html,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,fetchedAt,attempts}，本函數不會reject
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，其中attempts為各階嘗試紀錄陣列，成功之紀錄為{method,status:'success',htmlLength}(htmlLength為原始HTML長度，與頂層contentLength之正文長度不同)，失敗為{method,status:'failed',reason,message}，被判識或解析失敗為{method,status:'blocked',type,reason,message}（判識所致者reason與type同值）；parse=true成功時為{status:'success',url,title,content,contentLength,method,fetchedAt,attempts}，parse=false成功時為{status:'success',url,html,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,fetchedAt,attempts}，本函數不會reject
  * @example
  *
  * import fetchWeb from './src/fetchWeb.mjs'

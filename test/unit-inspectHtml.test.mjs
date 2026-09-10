@@ -233,3 +233,142 @@ describe('反爬蟲攔阻頁之判識涵蓋(R21回歸)', function() {
     })
 
 })
+
+
+//R29回歸: 內容量閘門之對稱性。
+//
+//此前閘門由各判識器自行決定要不要寫, 結果17個判識器只有5個有——正是「碰到誤判就補那一個,
+//不回頭比對兄弟」的形態, 而該形態本身已在前一輪被指出過一次。改為預設套用後,
+//新增判識器不需要記得寫閘門, 忘記標anyContent的後果是偏保守(多擋)而非偏危險(誤放)
+describe('內容量閘門之對稱性(R29回歸)', function() {
+
+    //只是「談論」反爬蟲的正常長文, 每則命中一個不同的判識器
+    let article = (mention) => '<html><head><title>反爬蟲機制解析</title></head><body><article>' +
+        '<p>' + mention + '</p><p>' +
+        '本文詳細說明各家反爬蟲服務的運作方式與其對內容抓取的影響, 並比較不同方案的取捨。'.repeat(25) +
+        '</p></article></body></html>'
+
+    it('正常長文提及各家反爬蟲特徵字串時皆不誤判', function() {
+        let mentions = [
+            'Cloudflare的挑戰頁會顯示 verify you are human 這句話',
+            '當WAF攔下時會回應 your request has been blocked',
+            'perimeterx 是另一家常見的反爬蟲服務供應商',
+            'captcha-delivery.com 為DataDome之資源網域',
+            'cf-turnstile 是Cloudflare的驗證元件class名稱',
+            'secitptpage 出現於 wx.qq.com 之驗證頁',
+            'c-wiz 元素用於 news.google.com 之版面',
+            '頁面標題為 Access Denied 時多半是CDN攔阻',
+        ]
+        let r = mentions.map((v) => inspectHtml(article(v)).pass)
+        let rr = mentions.map(() => true)
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('真攔阻頁內容稀少故仍被擋下', function() {
+        let cases = [
+            ['Access Denied', 'You do not have permission to access this document.', 'access denied (WAF/CDN block)'],
+            ['Attention Required! | Cloudflare', 'Sorry, you have been blocked.', 'Cloudflare/anti-bot challenge'],
+            ['x', 'Please verify you are human before continuing.', 'human verification page'],
+            ['x', 'Your request has been blocked by our server.', 'server security block'],
+        ]
+        let r = cases.map(([ti, tx]) => {
+            let t = inspectHtml('<html><head><title>' + ti + '</title></head><body><p>' + tx + '</p></body></html>')
+            return [t.pass, t.message]
+        })
+        let rr = cases.map(([, , msg]) => [false, msg])
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('標題型判準一律以前綴比對, 帶尾綴之真攔阻頁不漏判', function() {
+
+        //R21只把此規則套用在Cloudflare那一項, 同檔另一項access denied仍為全等比對而漏判
+        let titles = ['Access Denied', 'Access Denied - example.com', 'Access Denied | CDN']
+        let r = titles.map((ti) => {
+            return inspectHtml('<html><head><title>' + ti + '</title></head><body><p>No permission.</p></body></html>').type
+        })
+        let rr = ['captcha', 'captcha', 'captcha']
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('僅比對HTML結構或內容量者不套閘門', function() {
+
+        //meta refresh比對標籤結構, empty本身即內容量判準; 兩者套閘門會使長內容之轉址頁漏判
+        let long = '本文內容充足足以超過閘門。'.repeat(60)
+        let redirect = '<html><head><meta http-equiv="refresh" content="0;url=https://a.com/b"><title>x</title></head>' +
+            '<body><p>' + long + '</p></body></html>'
+        let r = inspectHtml(redirect).type
+        let rr = 'redirect'
+        assert.strict.deepEqual(r, rr)
+    })
+
+})
+
+
+//R23: 判識器之比對順序即語意, 但重排DETECTORS原本不會使任何測試失敗。
+//
+//17個判識器之兩兩順序組合達136對, 窮舉不可行且無意義。改以「分層」表達真正的意圖:
+//  L1 攔阻與驗證(captcha/verify) → L2 轉址(redirect) → L3 空內容(empty)
+//層界之所以是意圖: 一個頁面若同時是攔阻頁又內容稀少, 回報「被攔阻」對呼叫端才有用,
+//回報「內容太少」會讓人誤以為是網站問題。層內之細部順序只影響message文字, 不影響升級決策
+describe('判識器之比對順序(R23)', function() {
+
+    it('同時符合攔阻與空內容時, 回報攔阻', function() {
+
+        //大量script撐開html而可見文字極少, 同時滿足empty; 標題又是攔阻頁標題
+        let html = '<html><head><title>Just a moment...</title></head><body>' +
+            '<script>' + 'v'.repeat(6000) + '</script><p>x</p></body></html>'
+        let t = inspectHtml(html)
+        let r = [t.type, t.message]
+        let rr = ['captcha', 'Cloudflare/anti-bot challenge']
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('同時符合轉址與空內容時, 回報轉址', function() {
+
+        //轉址殼頁天生內容稀少, 若empty排在前面則所有轉址頁都會被誤報為空內容,
+        //而runPlan只有在judged為redirect時才會替後續階開啟等待轉址
+        let html = '<html><head><meta http-equiv="refresh" content="0;url=https://a.com/b"><title>x</title></head>' +
+            '<body><script>' + 'v'.repeat(6000) + '</script></body></html>'
+        let r = inspectHtml(html).type
+        let rr = 'redirect'
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('同時符合攔阻與轉址時, 回報攔阻', function() {
+
+        //部分攔阻頁會附meta refresh導向說明頁; 此時應回報攔阻使階梯升級, 而非當成單純轉址
+        let html = '<html><head><meta http-equiv="refresh" content="0;url=https://a.com/b">' +
+            '<title>Access Denied</title></head><body><p>No permission.</p></body></html>'
+        let r = inspectHtml(html).type
+        let rr = 'captcha'
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('層內順序之整體快照(change-detector)', function() {
+
+        //本條與上面三條性質不同: 它不表達意圖, 只在有人調動DETECTORS順序時提醒。
+        //失敗本身不代表錯誤——若調動是刻意的, 更新本條即可; 但若是誤動, 上面三條會一起失敗
+        let probes = [
+            ['<html><body>captcha-delivery.com</body></html>', 'DataDome CAPTCHA'],
+            ['<html><body>perimeterx</body></html>', 'PerimeterX challenge'],
+            ['<html><body><div class="cf-challenge-running"></div></body></html>', 'Cloudflare challenge'],
+            ['<html><head><title>Just a moment...</title></head><body>x</body></html>', 'Cloudflare/anti-bot challenge'],
+            ['<html><body><script src="/cdn-cgi/challenge-platform/x"></script>y</body></html>', 'anti-bot challenge resource'],
+            ['<html><body>captcha challenge</body></html>', 'generic CAPTCHA'],
+            ['<html><head><title>Are you a robot?</title></head><body>x</body></html>', 'robot challenge: "Are you a robot?"'],
+            ['<html><body><div class="cf-turnstile"></div></body></html>', 'Cloudflare Turnstile'],
+            ['<html><body>verify you are human</body></html>', 'human verification page'],
+            ['<html><body>request has been blocked</body></html>', 'server security block'],
+            ['<html><head><title>Access Denied</title></head><body>x</body></html>', 'access denied (WAF/CDN block)'],
+            ['<html><body>something went wrong at x.com</body></html>', 'X/Twitter error page'],
+            ['<html><body>secitptpage wx.qq.com</body></html>', 'WeChat verification page'],
+            ['<html><head><meta http-equiv="refresh" content="0;url=https://a.com/"></head><body>x</body></html>', 'meta refresh redirect'],
+            ['<html><body>c-wiz news.google.com</body></html>', 'Google News wrapper'],
+            ['<html><head><title>MSN</title></head><body>x</body></html>', 'platform wrapper: "MSN"'],
+        ]
+        let r = probes.map(([html]) => inspectHtml(html).message)
+        let rr = probes.map(([, msg]) => msg)
+        assert.strict.deepEqual(r, rr)
+    })
+
+})

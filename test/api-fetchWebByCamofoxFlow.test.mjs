@@ -156,4 +156,23 @@ describe('fetchWebByCamofox完整流程(假server)', function() {
         })
     })
 
+    it('snapshot請求傳輸失敗時回camofox-error而非camofox-empty', async function() {
+        this.timeout(120000)
+
+        //兩者的處置不同: 傳輸失敗該重試, 頁面真的沒內容則重試也沒用。
+        //先前snapshot請求之錯誤被catch吞掉, 最終一律回camofox-empty, 呼叫端無從分辨
+        await withCamofoxFake({ failSnapshot: true }, async (fake) => {
+            let t = await fetchWebByCamofox(URL_T, {
+                port: fake.port,
+                maxRetries: 0,
+                serverStartTimeoutMs: 10000,
+                snapshotRetries: 0,
+                snapshotWaitMs: 50,
+            })
+            let r = [t.status, t.reason, includes(t.message, 'snapshot request failed')]
+            let rr = ['error', 'camofox-error', true]
+            assert.strict.deepEqual(r, rr)
+        })
+    })
+
 })

@@ -13,7 +13,7 @@
     "w-package-tools": "^1.1.15"
   },
   "scripts": {
-    "test": "mocha --parallel --timeout 60000",
+    "test": "mocha --parallel --timeout 60000 \"test/*.test.mjs\"",
     "cov": "node test/tools/runCoverage.mjs",
     "deploy": "gh-pages -d docs"
   },

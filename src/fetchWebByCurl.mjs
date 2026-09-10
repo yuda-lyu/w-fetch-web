@@ -1,9 +1,9 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import delay from 'wsemi/src/delay.mjs'
 import getUrlErrorResult from './getUrlErrorResult.mjs'
 import { fetchedAtIso } from './fetchedAt.mjs'
-import getRetryWaitMs, { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import withRetry from './withRetry.mjs'
 import { getOptPInt, getOptP0Int, getOptStr } from './getOpt.mjs'
 import { METHOD_CURL as METHOD } from './constants.mjs'
 
@@ -83,11 +83,11 @@ async function fetchWebByCurl(url, opt = {}) {
     //acceptLang
     let acceptLang = getOptStr(opt, 'acceptLanguage', DEFAULT_ACCEPT_LANG)
 
-    let lastReason = ''
-    let lastMessage = ''
+    //curl拋錯時取不到狀態碼, 以前一次成功解析到者回報, 供呼叫端辨識是連線失敗或站方回應異常
     let lastHttpCode = 0
 
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    //單次嘗試: 只判斷這一次的結果, 重試與退避交由withRetry
+    let attemptOnce = async () => {
         try {
 
             //curl, url由參數陣列傳遞無命令注入風險
@@ -114,71 +114,59 @@ async function fetchWebByCurl(url, opt = {}) {
 
             //5xx與429為可重試
             if (httpCode >= 500 || httpCode === 429) {
-                lastReason = 'http-error'
-                lastMessage = `HTTP ${httpCode}`
-                if (attempt <= maxRetries) {
-                    let ms = getRetryWaitMs(attempt)
-                    process.stderr.write(`[fetchWebByCurl] HTTP ${httpCode} ${url}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
-                    await delay(ms)
-                    continue
-                }
-                return { status: 'error', url, message: lastMessage, reason: lastReason, httpCode, method: METHOD, fetchedAt, attempts: attempt }
+                return { ok: false, reason: 'http-error', message: `HTTP ${httpCode}`, httpCode, logDetail: `HTTP ${httpCode} ${url}` }
             }
 
             //4xx(429除外)不重試
             if (httpCode >= 400) {
-                return { status: 'error', url, message: `HTTP ${httpCode}`, reason: 'http-error', httpCode, method: METHOD, fetchedAt, attempts: attempt }
+                return { ok: false, retryable: false, reason: 'http-error', message: `HTTP ${httpCode}`, httpCode }
             }
 
-            //內容過短
+            //內容過短亦不重試: 再抓一次仍是同一份內容
             if (!html || html.length < MIN_HTML_LENGTH) {
                 return {
-                    status: 'error',
-                    url,
-                    message: `response too short (${html ? html.length : 0} chars)`,
+                    ok: false,
+                    retryable: false,
                     reason: 'empty-response',
+                    message: `response too short (${html ? html.length : 0} chars)`,
                     httpCode,
-                    method: METHOD,
-                    fetchedAt,
-                    attempts: attempt,
                 }
             }
 
-            //成功
-            return {
-                status: 'success',
-                url,
-                html,
-                htmlLength: html.length,
-                contentKind: 'raw',
-                httpCode,
-                method: METHOD,
-                fetchedAt,
-                attempts: attempt,
-            }
+            return { ok: true, html, httpCode }
         }
         catch (err) {
-            lastReason = 'curl-error'
-            lastMessage = err.message || String(err)
-            if (attempt <= maxRetries) {
-                let ms = getRetryWaitMs(attempt)
-                process.stderr.write(`[fetchWebByCurl] curl error: ${lastMessage}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
-                await delay(ms)
-                continue
-            }
-            return {
-                status: 'error',
-                url,
-                message: lastMessage,
-                reason: lastReason,
-                httpCode: lastHttpCode || undefined,
-                method: METHOD,
-                fetchedAt,
-                attempts: attempt,
-            }
+            let message = err.message || String(err)
+            return { ok: false, reason: 'curl-error', message, httpCode: lastHttpCode || undefined, logDetail: 'curl error: ' + message }
         }
     }
 
+    let r = await withRetry(attemptOnce, { maxRetries, tag: 'fetchWebByCurl' })
+
+    if (r.ok) {
+        return {
+            status: 'success',
+            url,
+            html: r.html,
+            htmlLength: r.html.length,
+            contentKind: 'raw',
+            httpCode: r.httpCode,
+            method: METHOD,
+            fetchedAt,
+            attempts: r.attempts,
+        }
+    }
+
+    return {
+        status: 'error',
+        url,
+        message: r.message,
+        reason: r.reason,
+        httpCode: r.httpCode,
+        method: METHOD,
+        fetchedAt,
+        attempts: r.attempts,
+    }
 }
 
 

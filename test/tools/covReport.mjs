@@ -39,7 +39,8 @@ for (let fn of fs.readdirSync(fdCov)) {
 
 let rows = []
 let totEff = 0
-let totUnc = 0
+let totDead = 0
+let totPartial = 0
 
 for (let fp of Object.keys(byFile).sort()) {
     let src = fs.readFileSync(fp, 'utf8')
@@ -70,7 +71,14 @@ for (let fp of Object.keys(byFile).sort()) {
         acc += ln.length + 1
     }
 
-    let uncovered = []
+    //逐行分成三種狀態:
+    //  covered   該行所有非空白字元皆被執行
+    //  dead      該行完全沒被執行——真正未測到的程式
+    //  partial   行內部分未覆蓋, 通常是 `a || b` 之右側或 `?.` 短路分支未走到,
+    //            該行主體其實有執行。兩者混為一談會把「少一個fallback分支」誇大成
+    //            「整行未測」, 使報表看起來有大量未測的業務邏輯而誤導判讀
+    let dead = []
+    let partial = []
     let eff = 0
     for (let i = 0; i < lines.length; i++) {
         let t = lines[i].trim()
@@ -81,30 +89,44 @@ for (let fp of Object.keys(byFile).sort()) {
         let s = lineStart[i]
         let e = s + lines[i].length
 
-        //該行只要有任一非空白字元未被覆蓋即計為未覆蓋
-        let bad = false
+        let nCode = 0
+        let nUnc = 0
         for (let k = s; k < e; k++) {
-            if (src[k].trim() !== '' && covered[k] === 0) {
-                bad = true
-                break
+            if (src[k].trim() !== '') {
+                nCode += 1
+                if (covered[k] === 0) {
+                    nUnc += 1
+                }
             }
         }
-        if (bad) {
-            uncovered.push(i + 1)
+        if (nUnc === 0) {
+            continue
+        }
+        if (nUnc === nCode) {
+            dead.push(i + 1)
+        }
+        else {
+            partial.push(i + 1)
         }
     }
 
     totEff += eff
-    totUnc += uncovered.length
-    rows.push({ file: path.basename(fp), eff, unc: uncovered.length, lines: uncovered })
+    totDead += dead.length
+    totPartial += partial.length
+    rows.push({ file: path.basename(fp), eff, dead, partial })
 }
 
-rows.sort((a, b) => b.unc - a.unc)
+rows.sort((a, b) => (b.dead.length - a.dead.length) || (b.partial.length - a.partial.length))
 for (let r of rows) {
-    if (r.unc > 0) {
-        console.log(String(r.unc).padStart(3) + '/' + String(r.eff).padStart(4) + '  ' + r.file.padEnd(34) + ' 行: ' + r.lines.join(','))
+    if (r.dead.length === 0 && r.partial.length === 0) {
+        continue
     }
+    console.log(String(r.dead.length).padStart(3) + '/' + String(r.eff).padStart(4) + '  ' + r.file.padEnd(34) +
+        (r.dead.length > 0 ? ' 未執行: ' + r.dead.join(',') : '') +
+        (r.partial.length > 0 ? '  [行內分支: ' + r.partial.join(',') + ']' : ''))
 }
 console.log('---')
-console.log('有效行 ' + totEff + ', 未覆蓋 ' + totUnc + ', 覆蓋率 ' + ((1 - totUnc / totEff) * 100).toFixed(1) + '%')
+console.log('有效行 ' + totEff + ', 未執行 ' + totDead + ', 行內分支未覆蓋 ' + totPartial)
+console.log('行覆蓋率 ' + ((1 - totDead / totEff) * 100).toFixed(1) + '%' +
+    ', 併計行內分支則為 ' + ((1 - (totDead + totPartial) / totEff) * 100).toFixed(1) + '%')
 console.log('計入檔案數 ' + rows.length + ' / src共 ' + fs.readdirSync('./src').filter((v) => v.endsWith('.mjs')).length)

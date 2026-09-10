@@ -91,6 +91,10 @@ async function _runSession(base, url, cfg) {
 
     let snap = null
     let chars = 0
+
+    //記錄最後一次請求失敗之原因: 傳輸失敗與「頁面真的沒內容」是兩回事,
+    //前者該重試、後者重試也沒用, 混報為camofox-empty會使呼叫端無從分辨
+    let lastErr = null
     try {
         for (let i = 0; i <= cfg.snapshotRetries; i++) {
             try {
@@ -101,7 +105,9 @@ async function _runSession(base, url, cfg) {
                     break
                 }
             }
-            catch {}
+            catch (err) {
+                lastErr = err
+            }
             if (i < cfg.snapshotRetries) {
                 process.stderr.write(`[fetchWebByCamofox] snapshot ${i + 1} only ${chars} chars, waiting ${cfg.snapshotWaitMs}ms...\n`)
                 await delay(cfg.snapshotWaitMs)
@@ -110,6 +116,11 @@ async function _runSession(base, url, cfg) {
     }
     finally {
         await _fetchTimeout(base + '/tabs/' + tabId + '?userId=fetchWebByCamofox', { method: 'DELETE' }).catch(() => {})
+    }
+
+    //從未取得任何回應且有請求錯誤: 屬傳輸層失敗而非內容為空
+    if (snap === null && lastErr !== null) {
+        return { ok: false, reason: 'camofox-error', message: 'snapshot request failed: ' + (lastErr?.message || String(lastErr)) }
     }
 
     if (!snap || chars < cfg.snapshotMinChars || !isstr(snap.snapshot)) {

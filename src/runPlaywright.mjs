@@ -1,8 +1,8 @@
 import { chromium } from 'playwright'
-import delay from 'wsemi/src/delay.mjs'
 import getUrlErrorResult from './getUrlErrorResult.mjs'
 import { fetchedAtIso } from './fetchedAt.mjs'
-import getRetryWaitMs, { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import withRetry from './withRetry.mjs'
 import navigateWithRedirectWait from './navigateWithRedirectWait.mjs'
 import extractPageContent from './extractPageContent.mjs'
 import { getOptPInt, getOptP0Int, getOptBool } from './getOpt.mjs'
@@ -92,50 +92,37 @@ async function runPlaywright(url, opt, cfg) {
     //maxRetries
     let maxRetries = getOptP0Int(opt, 'maxRetries', DEFAULT_MAX_RETRIES)
 
-    let lastMessage = ''
+    //單次嘗試自行擁有browser之生命週期, 回傳前必定關閉。
+    //不可把close放在重試迴圈之finally——finally晚於catch內之await delay,
+    //會使失敗的browser在退避的3至15秒期間繼續存活
+    let r = await withRetry(() => _runOnce(url, opt, cfg, { navTimeout, postWait, waitForRedirect }), {
+        maxRetries,
+        tag: cfg.logName,
+    })
 
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-
-        //單次嘗試自行擁有browser之生命週期, 回傳前必定關閉。
-        //不可把close放在外層迴圈之finally——finally晚於catch內之await delay,
-        //會使失敗的browser在退避的3至15秒期間繼續存活
-        let r = await _runOnce(url, opt, cfg, { navTimeout, postWait, waitForRedirect })
-
-        if (r.ok) {
-            return {
-                status: 'success',
-                url,
-                html: r.html,
-                htmlLength: r.html.length,
-                contentKind: r.contentKind,
-                ...r.extra,
-                method: cfg.method,
-                fetchedAt,
-                attempts: attempt,
-            }
-        }
-
-        lastMessage = r.message
-
-        if (attempt <= maxRetries) {
-            let ms = getRetryWaitMs(attempt)
-            process.stderr.write(`[${cfg.logName}] error: ${lastMessage}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})
-`)
-            await delay(ms)
-            continue
-        }
-
+    if (r.ok) {
         return {
-            status: 'error',
+            status: 'success',
             url,
-            message: lastMessage,
-            reason: 'playwright-error',
+            html: r.html,
+            htmlLength: r.html.length,
+            contentKind: r.contentKind,
+            ...r.extra,
             method: cfg.method,
             fetchedAt,
-            attempts: attempt,
+            attempts: r.attempts,
         }
     }
 
+    return {
+        status: 'error',
+        url,
+        message: r.message,
+        reason: 'playwright-error',
+        method: cfg.method,
+        fetchedAt,
+        attempts: r.attempts,
+    }
 }
 
 
