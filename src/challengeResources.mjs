@@ -10,10 +10,18 @@
 
 //挑戰元件本身之資源位址
 //順序即為有頭模式之點擊優先序（見VERIFY_SELECTORS）
+//
+//reCAPTCHA以路徑片段而非網域比對：其api.js與iframe分別可來自www.google.com與recaptcha.net
+//兩個網域，`/recaptcha/`同時涵蓋兩者。刻意不用裸字'recaptcha'——那會命中內文提及該字之文章，
+//亦會命中容器class`g-recaptcha`，而本表之條目同時供VERIFY_SELECTORS組出iframe選擇器，
+//裸字會使選擇器過寬。
+//此前本表有hcaptcha而無reCAPTCHA，實測reCAPTCHA挑戰頁完全漏判（回pass）而hCaptcha被攔下——
+//同一類元件一個涵蓋一個沒有，屬對稱破缺。reCAPTCHA是網路上最常見的CAPTCHA，非推測性風險
 let CHALLENGE_RESOURCES = [
     '/cdn-cgi/challenge-platform',
     'challenges.cloudflare.com',
     'hcaptcha.com',
+    '/recaptcha/',
 ]
 
 

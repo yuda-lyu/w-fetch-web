@@ -25,10 +25,14 @@ describe('fetchWeb', function() {
             assert.strict.deepEqual(r, rr)
         })
 
-        it('未知method回傳error', async function() {
+        it('未知method回傳error, 且訊息列出含auto之完整合法值域', async function() {
+
+            //此處先前釘住的是一份漏掉'auto'的清單——'auto'既合法又是預設值, 卻不在被告知的
+            //合法值裡。該斷言是當時實作的指紋而非規格的翻譯, 故隨實作一起修正。
+            //值域本身之守門見 unit-valueDomains
             let t = await fetchWeb(svr.url('/article'), { method: 'xxx', showLog: false })
             let r = [t.status, t.message, t.attempts]
-            let rr = ['error', 'unknown method "xxx" (valid: curl, playwright, playwright-headed, camofox)', []]
+            let rr = ['error', 'unknown method "xxx" (valid: auto, curl, playwright, playwright-headed, camofox)', []]
             assert.strict.deepEqual(r, rr)
         })
 

@@ -62,3 +62,54 @@ describe('判識器與有頭模式認得同一組挑戰頁', function() {
     })
 
 })
+
+
+//三大CAPTCHA服務之涵蓋。
+//
+//此前清單有hCaptcha而無reCAPTCHA, 實測reCAPTCHA挑戰頁完全漏判(回pass)而hCaptcha被攔下——
+//同一類元件一個涵蓋一個沒有, 屬對稱破缺。reCAPTCHA是網路上最常見的CAPTCHA, 非推測性風險
+describe('CAPTCHA服務之涵蓋(對稱性)', function() {
+
+    let mk = (src) => '<html><head><title>Verify</title></head><body>' +
+        '<div class="widget"></div><script src="' + src + '"></script>' +
+        '<p>Please complete the security check to continue.</p></body></html>'
+
+    it('三大服務之挑戰頁皆被判為captcha', function() {
+        let cases = [
+            ['reCAPTCHA(www.google.com)', 'https://www.google.com/recaptcha/api.js'],
+            ['reCAPTCHA(recaptcha.net)', 'https://recaptcha.net/recaptcha/api.js'],
+            ['hCaptcha', 'https://hcaptcha.com/1/api.js'],
+            ['Cloudflare Turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js'],
+        ]
+        let r = cases.map(([k, src]) => [k, inspectHtml(mk(src)).type])
+        let rr = cases.map(([k]) => [k, 'captcha'])
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('內嵌reCAPTCHA之正常長文頁面不被誤殺', function() {
+
+        //reCAPTCHA大量出現於正常登入頁與留言板, 與/cdn-cgi/那條註解同一種顧慮。
+        //此處靠既有的內容量閘門區隔: 攔阻頁可見文字極少, 正常頁面有整篇內容
+        let login = '<html><head><title>會員登入</title></head><body>' +
+            '<form><input name="u"><input name="p"></form>' +
+            '<script src="https://www.google.com/recaptcha/api.js"></script><p>' +
+            '歡迎回來，請輸入您的帳號與密碼登入本站，若忘記密碼可透過電子郵件重設，本站採用多重驗證保護您的帳戶安全。'.repeat(12) +
+            '</p></body></html>'
+        let r = inspectHtml(login).pass
+        let rr = true
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('內文僅提及recaptcha之文章不被誤殺', function() {
+
+        //資源位址刻意寫成'/recaptcha/'而非裸字'recaptcha': 後者會命中內文與容器class g-recaptcha,
+        //亦會使VERIFY_SELECTORS組出的iframe選擇器過寬
+        let art = '<html><head><title>談驗證碼</title></head><body><p>' +
+            '本文說明 recaptcha 與 g-recaptcha 容器的運作方式，以及它與其他驗證機制的差異。'.repeat(15) +
+            '</p></body></html>'
+        let r = [inspectHtml(art).pass, CHALLENGE_RESOURCES.includes('recaptcha')]
+        let rr = [true, false]
+        assert.strict.deepEqual(r, rr)
+    })
+
+})

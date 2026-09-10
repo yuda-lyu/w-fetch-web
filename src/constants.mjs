@@ -1,11 +1,18 @@
 //最低有效字數(解析後)
 let MIN_CONTENT = 50
 
+//opt.method之自動階梯升級選項
+//與METHOD_*不同層: 它是**輸入**選項而非結果之方法名, 不會出現在任何結果的method欄位
+let METHOD_AUTO = 'auto'
+
 //方法名稱常數, 與4個抓取函數回傳的method字串一致
+//METHOD_ADAPTER為第五種: 內容由使用端adapter之fetch掛點取得, 未經本套件任一抓取器。
+//此時結果另帶adapterId欄位指出是哪一個adapter, 因為'adapter'本身不足以辨識來源
 let METHOD_CURL = 'curl'
 let METHOD_PW_HEADLESS = 'playwright-headless'
 let METHOD_PW_HEADED = 'playwright-headed'
 let METHOD_CAMOFOX = 'camofox'
+let METHOD_ADAPTER = 'adapter'
 
 //檢測結果類型常數
 let DETECT_PASS = 'pass'
@@ -51,6 +58,26 @@ let REASONS = Object.freeze({
     'adapter-parse-failed': 'adapter回success:false且未自報reason',
     'adapter-parse-miss': 'adapter命中網域但頁面缺少其預期之結構',
 
+    //抓取層之契約錯誤
+    //兩者刻意分名: 前者要呼叫端去修自己的adapter, 後者是套件或環境的問題, 處置不同
+    'adapter-fetch-error': 'adapter之fetch拋錯或回傳形狀不合契約(顯性回報, 不落回階梯)',
+    'adapter-fetch-skip': 'adapter之fetch表明此網址不適用, 改由階梯抓取',
+    'fetcher-error': '抓取器拋錯或回傳形狀不合契約',
+
+    //判識所致
+    //
+    //此四者即DETECT_*之四種攔阻型別。它們並非另一套值域, 而是同一組值流入reason欄位:
+    //runPlan於判識未通過時以 reason: inspection.type 記錄, 該值再經attempts成為頂層reason。
+    //
+    //此前本清單漏列這四個, 卻同時宣稱自己是「完整值域」與「唯一權威」——
+    //呼叫端依README列舉寫的分支, 碰到攔阻頁就會落到default。
+    //unit-reasons之守門當時抓不到, 因為它只掃 reason: '字面量',
+    //而這四個是由變數指派的; 該守門現另以DETECT_*逐一比對本表補上此缺口
+    [DETECT_CAPTCHA]: '判識為CAPTCHA或反爬蟲攔阻頁',
+    [DETECT_VERIFY]: '判識為驗證頁',
+    [DETECT_REDIRECT]: '判識為轉址包裝頁',
+    [DETECT_EMPTY]: '判識為空內容, 或解析未取得足量正文',
+
     //無法歸因
     'unknown': '無上游歸因可用之退路值',
 })
@@ -58,10 +85,12 @@ let REASONS = Object.freeze({
 
 export {
     MIN_CONTENT,
+    METHOD_AUTO,
     METHOD_CURL,
     METHOD_PW_HEADLESS,
     METHOD_PW_HEADED,
     METHOD_CAMOFOX,
+    METHOD_ADAPTER,
     DETECT_PASS,
     DETECT_CAPTCHA,
     DETECT_VERIFY,

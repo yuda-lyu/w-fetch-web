@@ -7,6 +7,7 @@ import navigateWithRedirectWait from './navigateWithRedirectWait.mjs'
 import extractPageContent from './extractPageContent.mjs'
 import { getOptPInt, getOptP0Int, getOptBool } from './getOpt.mjs'
 import { getBrowserPageOptions } from './requestIdentity.mjs'
+import { checkHttpStatus } from './httpStatus.mjs'
 
 
 //預設值
@@ -31,18 +32,29 @@ async function _runOnce(url, opt, cfg, o) {
             await cfg.onPage(page)
         }
 
+        let resp = null
         if (o.waitForRedirect) {
-            await navigateWithRedirectWait(page, url, o.navTimeout)
+            resp = await navigateWithRedirectWait(page, url, o.navTimeout)
         }
         else {
-            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: o.navTimeout })
+            resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: o.navTimeout })
             await page.waitForTimeout(o.postWait)
+        }
+
+        //HTTP狀態檢核, 判準與curl階共用同一模組
+        //此前page.goto()之Response被丟棄, 於是**只有curl階看得到HTTP狀態**:
+        //實測同一個回500與404的網址, curl回error/http-error, playwright回success並帶回錯誤頁HTML。
+        //curl被擋而升級至playwright時, 站台的404或403頁面遂被當成抓取成功的內容送進判識與解析
+        let httpCode = resp ? resp.status() : 0
+        let bad = checkHttpStatus(httpCode)
+        if (bad) {
+            return { ok: false, retryable: bad.retryable, reason: bad.reason, message: bad.message, httpCode }
         }
 
         let extra = cfg.afterNavigate ? await cfg.afterNavigate(page, opt) : {}
         let { html, contentKind } = await extractPageContent(page)
 
-        return { ok: true, html, contentKind, extra }
+        return { ok: true, html, contentKind, extra, httpCode }
     }
     catch (err) {
         return { ok: false, message: err.message || String(err) }
@@ -72,7 +84,7 @@ async function _runOnce(url, opt, cfg, o) {
  * @param {Object} cfg.launch 輸入chromium.launch之參數物件
  * @param {Function} [cfg.onPage=null] 輸入開頁後、導航前之前置處理async函數，簽章為(page)，預設null
  * @param {Function} [cfg.afterNavigate=null] 輸入導航後、取內容前之處理async函數，簽章為(page,opt)，其回傳物件會併入成功結果，預設null
- * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,...cfg.afterNavigate之回傳,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,httpCode,...cfg.afterNavigate之回傳,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}（reason為'http-error'或'playwright-error'），本函數不會reject
  */
 async function runPlaywright(url, opt, cfg) {
 
@@ -112,6 +124,9 @@ async function runPlaywright(url, opt, cfg) {
             html: r.html,
             htmlLength: r.html.length,
             contentKind: r.contentKind,
+
+            //與curl階之成功結果同形: 該階自初版即回報httpCode, 此階先前沒有
+            httpCode: r.httpCode,
             ...r.extra,
             method: cfg.method,
             fetchedAt,
@@ -119,11 +134,15 @@ async function runPlaywright(url, opt, cfg) {
         }
     }
 
+    //歸因取單次嘗試自報者, 未自報時才落回playwright-error
+    //此前一律寫死playwright-error, 使HTTP狀態所致之失敗與導航失敗無從區分——
+    //前者不該重試(4xx)且是站方回應, 後者是本地環境或網路問題
     return {
         status: 'error',
         url,
         message: r.message,
-        reason: 'playwright-error',
+        reason: r.reason || 'playwright-error',
+        httpCode: r.httpCode,
         method: cfg.method,
         fetchedAt,
         attempts: r.attempts,

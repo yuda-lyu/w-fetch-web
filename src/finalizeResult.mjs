@@ -79,6 +79,12 @@ function finalize(url, result, attempts) {
         if (result.snapshot) {
             out.snapshot = result.snapshot
         }
+
+        //內容由adapter之fetch掛點取得時另帶其id: method只說得出「來自某個adapter」,
+        //說不出是哪一個, 而呼叫端可能同時註冊多個。未經該掛點者不輸出此欄, 維持既有形狀
+        if (isestr(result.adapterId)) {
+            out.adapterId = result.adapterId
+        }
         return out
     }
 

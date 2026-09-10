@@ -1,7 +1,7 @@
 import assert from 'assert'
 import fs from 'fs'
 import path from 'path'
-import { REASONS } from '../src/constants.mjs'
+import { REASONS, DETECT_PASS, DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMPTY } from '../src/constants.mjs'
 
 
 //失敗歸因(reason)之值域守門。
@@ -14,11 +14,18 @@ import { REASONS } from '../src/constants.mjs'
 
 
 //取src內所有 reason: '...' 之字面量
+//
+//整行註解不計: 註解會提及reason值以說明行為(如「回reason:'captcha'」),
+//把它算成使用處會產生假陽性, 而假陽性會逼人改寫註解去閃避守門——那等於讓守門反過來壓抑說明
 let collectReasons = () => {
     let out = new Map()
     for (let fn of fs.readdirSync('src').filter((v) => v.endsWith('.mjs'))) {
         let t = fs.readFileSync(path.join('src', fn), 'utf8')
-        for (let m of t.matchAll(/reason:\s*'([a-z-]+)'/g)) {
+        let code = t.split('\n').filter((line) => {
+            let s = line.trim()
+            return !s.startsWith('//') && !s.startsWith('*')
+        }).join('\n')
+        for (let m of code.matchAll(/reason:\s*'([a-z-]+)'/g)) {
             if (!out.has(m[1])) {
                 out.set(m[1], [])
             }
@@ -56,6 +63,35 @@ describe('reason值域之單一權威', function() {
         let legacy = [...used.keys()].filter((v) => v.includes('custom-parser'))
         let r = legacy
         let rr = []
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('四種判識型別皆已登記於REASONS', function() {
+
+        //字面量掃描抓不到這四個: runPlan是以 reason: inspection.type 指派的(變數而非字面量)。
+        //此前它們確實不在REASONS內, 而該表同時宣稱自己是「完整值域」與「唯一權威」——
+        //呼叫端依README列舉寫的分支, 碰到攔阻頁就會落到default。
+        //守門機制自己漏了一種賦值形態, 故補上此條以型別清單而非字面量比對
+        let unlisted = [DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMPTY].filter((v) => !Object.hasOwn(REASONS, v))
+        let r = unlisted
+        let rr = []
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('pass不得成為reason', function() {
+
+        //判識通過不會產生失敗歸因; 若它出現在REASONS內, 代表有人把「通過」也當成一種失敗
+        let r = Object.hasOwn(REASONS, DETECT_PASS)
+        let rr = false
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('呼叫端實際收到的判識歸因確實可由REASONS查得', function() {
+
+        //以行為面複驗上一條: 不只是清單有登記, 而是實際流出的值就是那四個
+        let types = [DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMPTY]
+        let r = types.map((v) => typeof REASONS[v] === 'string' && REASONS[v].length > 0)
+        let rr = types.map(() => true)
         assert.strict.deepEqual(r, rr)
     })
 

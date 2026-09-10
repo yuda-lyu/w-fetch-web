@@ -1,4 +1,4 @@
-import { METHOD_CURL, METHOD_PW_HEADLESS, METHOD_PW_HEADED, METHOD_CAMOFOX } from './constants.mjs'
+import { METHOD_AUTO, METHOD_CURL, METHOD_PW_HEADLESS, METHOD_PW_HEADED, METHOD_CAMOFOX, METHOD_ADAPTER } from './constants.mjs'
 import { requiresHeaded, requiresCamofox, requiresJsRedirect, requiresHeadless } from './routeByUrl.mjs'
 
 
@@ -6,14 +6,34 @@ import { requiresHeaded, requiresCamofox, requiresJsRedirect, requiresHeadless }
 //key為抓取器識別、method為結果之方法名稱、label供訊息顯示、
 //inspect表該階是否做原始內容判識、redirectAware表該階是否受轉址旗標影響
 //
-//Camofox一律不做判識: inspectHtml之用途為階梯升級決策, 且判識對象為抓取器取回之原始文件,
-//而Camofox回傳者為accessibility snapshot合成之內容(見snapshotToHtml),
-//又其為階梯最後一階, 擋下亦無可升級之方法, 只會放棄一次原本可能成功的解析
+//四階一律做判識。此前Camofox階為inspect:false, 其理由有二, 現皆不成立:
+//
+//  (二)「Camofox回傳者為accessibility snapshot合成之內容」——此理由已被contentKind機制取代。
+//      合成內容以contentKind:'synthesized'告知判識器只比對semantic類判準(見inspectHtml),
+//      該機制成立於本豁免之後, 豁免卻未隨之收斂
+//  (一)「末階擋下亦無可升級, 只會放棄一次原本可能成功的解析」——與同檔之單階計畫不一致:
+//      method:'curl'同樣是「唯一一階、擋下無可升級」, 卻照常判識並回reason:'captcha'。
+//      同一條規則套在兄弟成員上結果相反, 屬對稱破缺
+//
+//實測後果: 四階皆取回同一份Cloudflare挑戰頁時, 前三階判captcha, camofox階把該挑戰頁樣板
+//當文章回傳(status:'success', title:'Just a moment...'), 呼叫端無任何欄位可據以察覺。
+//
+//誤判風險已量測: 合成HTML之可見文字與位元組數約1:1.2(實測200段正文為8415B/6903字),
+//故empty之「位元組>5000且可見文字<200」在此結構下不可能觸發; 而挑戰頁快照保有原標題,
+//由標題前綴這類強證據判識器接住。
+//
+//「末階誤判不可回復」之顧慮成立, 但它與「末階漏判不可回復」對稱, 差別在於誤判會出聲
+//(呼叫端收到reason:'captcha'可據以重試或改道), 漏判則是靜默把攔阻頁樣板當文章交出去。
+//出聲的錯優於靜默的錯
+//
+//adapter階不在METHOD_OPTIONS內, 亦不可由opt.method指定: 它不是「另一種爬法」,
+//而是「這次不爬」。是否插入取決於命中之adapter有沒有fetch掛點, 由呼叫端註冊決定
 let STEPS = {
+    adapter: Object.freeze({ key: 'adapter', method: METHOD_ADAPTER, label: 'adapter fetch', inspect: true, redirectAware: false }),
     curl: Object.freeze({ key: 'curl', method: METHOD_CURL, label: 'curl', inspect: true, redirectAware: false }),
     headless: Object.freeze({ key: 'headless', method: METHOD_PW_HEADLESS, label: 'Playwright headless', inspect: true, redirectAware: true }),
     headed: Object.freeze({ key: 'headed', method: METHOD_PW_HEADED, label: 'Playwright headed', inspect: true, redirectAware: true }),
-    camofox: Object.freeze({ key: 'camofox', method: METHOD_CAMOFOX, label: 'Camofox', inspect: false, redirectAware: false }),
+    camofox: Object.freeze({ key: 'camofox', method: METHOD_CAMOFOX, label: 'Camofox', inspect: true, redirectAware: false }),
 }
 
 
@@ -25,6 +45,15 @@ let METHOD_OPTIONS = {
     'playwright-headed': 'headed',
     'camofox': 'camofox',
 }
+
+
+//opt.method之完整合法值域
+//
+//'auto'不在METHOD_OPTIONS內: 它不對應單一階而是整條階梯, 在下方先行分流。
+//但它仍是合法值(且為預設值), 故錯誤訊息須由本清單產生而非由METHOD_OPTIONS之鍵產生——
+//此前訊息取自後者, 使'Auto'一類的大小寫錯誤收到「valid: curl, playwright, ...」,
+//被告知的合法清單裡沒有他原本想用的那個值
+let METHOD_VALID = [METHOD_AUTO, ...Object.keys(METHOD_OPTIONS)]
 
 
 /**
@@ -39,6 +68,7 @@ let METHOD_OPTIONS = {
  * @param {String} url 輸入待抓取網址字串
  * @param {String} method 輸入方法字串，'auto'代表自動階梯升級
  * @param {Boolean} doInspect 輸入是否做原始內容判識布林值，false時各階之inspect一律關閉
+ * @param {Boolean} [hasFetchAdapter=false] 輸入命中之adapter是否具fetch掛點布林值，true時於計畫最前插入adapter階，預設false
  * @returns {Object} 回傳{plan,redirect,log}物件，plan為step描述陣列，redirect為轉址旗標初值，log為分流說明字串；method不合法時回傳{error}
  * @example
  *
@@ -51,21 +81,28 @@ let METHOD_OPTIONS = {
  * // => ['camofox']
  *
  */
-function buildPlan(url, method, doInspect) {
+function buildPlan(url, method, doInspect, hasFetchAdapter = false) {
 
     let pick = (keys, log, redirect = false) => {
+
+        //adapter階恆插在最前: 呼叫端手上若有更好的取得方式, 沒有理由先去爬一次。
+        //它也插在指定method之計畫前——opt.method回答「要爬的時候用哪種爬法」,
+        //adapter之fetch回答「這次要不要爬」, 兩者是不同問題故不需位階。
+        //失敗後要不要續走其餘階由runPlan依adapter之fallback決定, 不在此表達:
+        //計畫是純資料, 執行期的分支歸runPlan(與轉址旗標同一分工)
+        let ks = hasFetchAdapter ? ['adapter', ...keys] : keys
         return {
-            plan: keys.map((k) => (doInspect ? STEPS[k] : { ...STEPS[k], inspect: false })),
+            plan: ks.map((k) => (doInspect ? STEPS[k] : { ...STEPS[k], inspect: false })),
             redirect,
             log,
         }
     }
 
     //指定方法: 單一階, 不升級
-    if (method !== 'auto') {
+    if (method !== METHOD_AUTO) {
         let k = METHOD_OPTIONS[method]
         if (!k) {
-            return { error: `unknown method "${method}" (valid: ${Object.keys(METHOD_OPTIONS).join(', ')})` }
+            return { error: `unknown method "${method}" (valid: ${METHOD_VALID.join(', ')})` }
         }
         return pick([k], '')
     }

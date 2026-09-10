@@ -1,6 +1,7 @@
 import assert from 'assert'
 import includes from 'lodash-es/includes.js'
-import { defaultAdapters } from '../src/fetchWeb.mjs'
+import { defaultAdapters, inspectHtml } from '../src/fetchWeb.mjs'
+import estimateVisibleText from '../src/estimateVisibleText.mjs'
 import { htmlGelonghui, htmlBloomberg, storyOk } from './tools/fixtures.mjs'
 
 
@@ -295,6 +296,54 @@ describe('內建站台adapter', function() {
             })
             let r = [t.status, t.title]
             let rr = ['success', 'Illiquidity premium works only when liquidity is not needed']
+            assert.strict.deepEqual(r, rr)
+        })
+
+    })
+
+    describe('上兩條接線測試對fixture大小之依賴', function() {
+
+        //上兩條看似驗證了「內建adapter於完整流程中生效」, 但它們通過的真正原因是
+        //fixture只有291與585位元組——低於empty判識之HTML位元組下限(5000), 故該判識永不觸發。
+        //兩個fixture之可見文字皆為0, 亦即**真實頁面該有的東西它們沒有**:
+        //真實gelonghui頁面實測為362834位元組、可見文字7281(通過判識, 故該站無虞),
+        //而任何「HTML很大但可見文字極少」的JS渲染頁面, 其內建adapter都會在判識階就被攔下。
+        //
+        //本組把這層隱性依賴寫成明文, 使fixture日後被改大時能立刻看出後果
+
+        let inflate = (html) => html.replace('</body>', '<script>' + 'v'.repeat(6000) + '</script></body>')
+
+        it('fixture低於empty之位元組下限, 故該判識於上兩條中永不觸發', function() {
+            let g = htmlGelonghui('articleDetail')
+            let b = htmlBloomberg(storyOk)
+            let r = [g.length < 5000, b.length < 5000, estimateVisibleText(g).length, estimateVisibleText(b).length]
+            let rr = [true, true, 0, 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('同一份內容撐大至真實量級後即被判empty, adapter不被呼叫', function() {
+            let r = [inspectHtml(inflate(htmlGelonghui('articleDetail'))).type, inspectHtml(inflate(htmlBloomberg(storyOk))).type]
+            let rr = ['empty', 'empty']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('內建adapter亦可用inspect:false豁免, 與使用端adapter一視同仁', async function() {
+
+            //P2之機制對內建與使用端無差別待遇。內建之gelonghui與bloomberg目前**未**宣告豁免:
+            //gelonghui之真實頁面實測可見文字7281而通過判識, 無此需要;
+            //bloomberg之真實頁面未取得(curl回403), 未經量測即宣告豁免屬臆測, 故不加
+            let { default: fetchWeb } = await import('../src/fetchWeb.mjs')
+            let big = inflate(htmlGelonghui('articleDetail'))
+            let mk = (adapters) => fetchWeb(URL_G, {
+                showLog: false,
+                method: 'curl',
+                adapters,
+                _fetchers: { curl: async () => ({ status: 'success', html: big, method: 'curl' }) },
+            })
+            let tOff = await mk([])
+            let tOn = await mk([{ id: 'gelonghui', match: /gelonghui\.com/, parse: parseGelonghui, inspect: false }])
+            let r = [tOff.status, tOff.attempts[0].type, tOn.status, tOn.title]
+            let rr = ['error', 'empty', 'success', '流動性溢價的真相']
             assert.strict.deepEqual(r, rr)
         })
 

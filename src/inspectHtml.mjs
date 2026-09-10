@@ -3,6 +3,7 @@ import isfun from 'wsemi/src/isfun.mjs'
 import estimateVisibleText from './estimateVisibleText.mjs'
 import { DETECT_PASS, DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMPTY } from './constants.mjs'
 import { CHALLENGE_RESOURCES } from './challengeResources.mjs'
+import { isValidDetector, normalizeDetector, ORIGIN_CUSTOM } from './detectorContract.mjs'
 
 
 //轉址與載入interstitial殼頁之標題關鍵字
@@ -47,6 +48,20 @@ let CHALLENGE_TITLE_PREFIXES = ['just a moment', 'just a quick check', 'checking
 //(此前兩處各存一份形態不同的複本, 見challengeResources.mjs)
 
 
+//內容量閘門是否套用於某判識器: 本判斷之唯一擁有者
+//
+//套用於「內建之弱判準」一種而已, 另兩種都不套:
+//  strength='strong'      頁面自我宣告身分(標題前綴、meta標籤), 正常文章不會如此命名自己
+//  origin=ORIGIN_CUSTOM   使用端註冊者。閘門是為了保護套件自己對全世界頁面所下的猜測,
+//                         而呼叫端是**因為內建漏判了他實際遇到的頁面**才註冊, 語料與關鍵字
+//                         都由他掌握; 且本機制的動機情境(內建靠empty兜底的長篇非英語攔阻頁)
+//                         依定義就在閘門之上, 套了等於讓機制在唯一動機情境下必然無效。
+//                         責任分野與完整理由見detectorContract.mjs檔頭
+function _isVolumeGated(d) {
+    return d.origin !== ORIGIN_CUSTOM && d.strength !== 'strong'
+}
+
+
 //建立判識用之上下文
 //visible之估算須掃過整份HTML, 成本較高, 故改為惰性計算並快取,
 //僅在實際用到可見文字之判識器才付出該成本
@@ -86,7 +101,16 @@ function _mkCtx(html) {
 //
 //擋板另有一個維度上的錯誤: 它想擋的是「談論反爬蟲的正常文章」, 但用的判準是
 //「有沒有<article>標籤」。正確的分野是**內容量**——真攔阻頁可見文字極少(實測約64字),
-//正常文章則有整篇正文。故該三項改與其他弱判準一致, 一律搭配visible門檻(見各項)
+//正常文章則有整篇正文。
+//
+//strength標明證據強度, 決定要不要套內容量閘門:
+//  weak(預設)  依賴內文出現某個字串。正常文章談論該主題即會命中, **必須**搭配內容量閘門
+//  strong      頁面自我宣告其身分——標題前綴比對, 或meta refresh一類的結構事實。
+//              正常文章不會這樣命名自己, 故**不**套閘門
+//
+//先前此欄為anyContent(語意是「要不要套閘門」), 分的不是證據強度而是「例外與否",
+//於是標題型的強證據也被閘門擋掉: 實測title為「Just a moment...」之真實Cloudflare挑戰頁,
+//只要文案超過500字即漏判(多語系或Enterprise自訂挑戰頁即屬此類)
 let DETECTORS = [
 
     //反爬蟲基礎設施特徵: 靠script來源、class或id判斷, 對合成內容不適用
@@ -112,6 +136,9 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'Cloudflare/anti-bot challenge',
         evidence: 'semantic',
+
+        //標題前綴比對: 頁面以標題自我宣告身分, 正常文章不會如此命名
+        strength: 'strong',
         test: (c) => CHALLENGE_TITLE_PREFIXES.some((t) => c.titleLower.startsWith(t)),
     },
     {
@@ -165,13 +192,25 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'access denied (WAF/CDN block)',
         evidence: 'semantic',
-        test: (c) => c.titleLower.startsWith('access denied') || (c.lower.includes('access denied') && c.lower.includes('edgesuite.net')),
+
+        //標題前綴比對, 與Cloudflare那條同型
+        strength: 'strong',
+        test: (c) => c.titleLower.startsWith('access denied'),
+    },
+    {
+
+        //Akamai之攔阻頁: 內文同時含access denied與其CDN網域。
+        //兩個條件皆為內文字串, 故仍屬弱證據——談論Akamai攔阻的文章即可能同時含此二者
+        type: DETECT_CAPTCHA,
+        message: 'access denied (Akamai)',
+        evidence: 'semantic',
+        test: (c) => c.lower.includes('access denied') && c.lower.includes('edgesuite.net'),
     },
     {
         type: DETECT_CAPTCHA,
         message: 'X/Twitter error page',
         evidence: 'semantic',
-        test: (c) => c.lower.includes('something went wrong') && (c.lower.includes('x.com') || c.lower.includes('twitter.com')),
+        test: (c) => c.lower.includes('something went wrong') && (c.lower.includes('//x.com') || c.lower.includes('//twitter.com')),
     },
 
     //驗證頁面
@@ -189,8 +228,8 @@ let DETECTORS = [
         evidence: 'structural',
 
         //比對的是HTML標籤結構而非內文字串: 正常文章即使談論meta refresh, 其範例碼亦已被轉義,
-        //不會命中, 故不需內容量閘門
-        anyContent: true,
+        //不會命中
+        strength: 'strong',
         test: (c) => (c.html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+url=["']?([^"'\s>]*)["']?/i)?.[1] || '').replace(/[\\'"\s]/g, '').length > 0,
     },
     {
@@ -218,7 +257,7 @@ let DETECTORS = [
         evidence: 'semantic',
 
         //本身即為內容量判準, 再套閘門為同義反覆
-        anyContent: true,
+        strength: 'strong',
         test: (c) => c.html.length > EMPTY_HTML_MIN_BYTES && c.visible.length < EMPTY_VISIBLE_MAX,
     },
 ]
@@ -238,6 +277,7 @@ let DETECTORS = [
  * @param {String} html 輸入網頁HTML字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {String} [opt.contentKind='raw'] 輸入內容形態字串，'raw'為原始文件，'synthesized'為合成內容，預設'raw'
+ * @param {Array} [opt.detectors=[]] 輸入使用端判識器陣列，排於內建判識器之前故優先命中，其契約以src/detectorContract.mjs為唯一事實來源，預設[]
  * @returns {Object} 回傳檢測結果物件，格式為{pass,type,message}，其中pass為是否通過布林值，type為'pass'、'captcha'、'verify'、'redirect'、'empty'之一，message為說明字串
  * @example
  *
@@ -260,23 +300,44 @@ function inspectHtml(html, opt = {}) {
     //合成內容只跑semantic類; 非'synthesized'之值一律視為原始文件, 跑全部判識器
     let isSynth = opt?.contentKind === 'synthesized'
 
+    //使用端判識器排於內建之前, 與adapter之覆寫順序一致。
+    //內建清單之關鍵字全為英文, 中文與其他語系之攔阻頁只能靠呼叫端自行補充——
+    //套件的發版次數必然少於安裝方遇到新情況的次數, 故此處提供機制而非追加清單
+    let custom = (Array.isArray(opt?.detectors) ? opt.detectors : [])
+        .filter(isValidDetector)
+        .map(normalizeDetector)
+    let all = custom.length > 0 ? [...custom, ...DETECTORS] : DETECTORS
+
     let c = _mkCtx(html)
 
-    for (let d of DETECTORS) {
+    for (let d of all) {
         if (isSynth && d.evidence === 'structural') {
             continue
         }
 
-        //內容量閘門一律預設套用, 只有明確標記anyContent者例外。
+        //內容量閘門對內建弱判準預設套用(適用範圍見_isVolumeGated)。
         //預設為「套用」而非「不套用」, 是因為只要判準含字串比對, 正常文章談論該主題即會命中,
         //而攔阻頁與談論攔阻的文章之分野正是內容量。先前由各判識器自行決定要不要寫這個條件,
         //結果是17個判識器中只有5個有, 其餘同型者無——實測一篇1000字談反爬蟲的正常文章
         //會被human verification、server security block、PerimeterX三項誤判為攔阻頁
-        if (!d.anyContent && c.visible.length >= SPARSE_VISIBLE_MAX) {
+        if (_isVolumeGated(d) && c.visible.length >= SPARSE_VISIBLE_MAX) {
             continue
         }
 
-        if (d.test(c)) {
+        //判識器拋錯只略過該項, 不使整次判識失敗——判識器是補充保護, 與adapter之內容來源角色不同,
+        //一個使用端判識器寫壞不該讓所有抓取中斷。理由詳見detectorContract.mjs
+        let hit = false
+        try {
+            hit = d.test(c)
+        }
+        catch (err) {
+            if (opt?.showLog !== false && d.id) {
+                console.warn('[inspectHtml] detector ' + d.id + ' error: ' + (err?.message || String(err)) + ' — skipped')
+            }
+            continue
+        }
+
+        if (hit) {
             return { pass: false, type: d.type, message: isfun(d.message) ? d.message(c) : d.message }
         }
     }

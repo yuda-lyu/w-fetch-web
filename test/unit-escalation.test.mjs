@@ -163,17 +163,56 @@ describe('階梯升級', function() {
             assert.strict.deepEqual(r, rr)
         })
 
+        it('呼叫端傳入之waitForRedirect須生效, 不被計畫靜默覆寫', async function() {
+
+            //此前為直接覆寫: 呼叫端傳true, 抓取器實收false(實測), 選項靜默失效。
+            //而它是fetchWebByPlaywrightHeadless之公開選項, fetchWeb亦宣稱其餘鍵值會轉傳,
+            //兩份文件都讓呼叫端以為有效。與UA/Referer/Accept-Language在playwright階
+            //靜默失效同型(該次已修, 此處為同型的第二處)
+            let fs = mkAll({ playwrightHeadless: [ok(HTML_OK)] })
+            await run(URL_PLAIN, fs, { method: 'playwright', waitForRedirect: true })
+            let r = fs.playwrightHeadless.calls[0].waitForRedirect
+            let rr = true
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('計畫判定為轉址時, 呼叫端傳false不得把它關掉', async function() {
+
+            //取聯集而非讓呼叫端全權決定: 計畫判定是有證據的(前一階實際抓到轉址殼頁)
+            let fs = mkAll({ curl: [ok(HTML_REDIRECT)], playwrightHeadless: [ok(HTML_OK)] })
+            await run(URL_PLAIN, fs, { waitForRedirect: false })
+            let r = fs.playwrightHeadless.calls[0].waitForRedirect
+            let rr = true
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('waitForRedirect為非布林時採預設false', async function() {
+            let r = []
+            for (let v of ['true', 1, {}, null]) {
+                let fs = mkAll({ playwrightHeadless: [ok(HTML_OK)] })
+                await run(URL_PLAIN, fs, { method: 'playwright', waitForRedirect: v })
+                r.push(fs.playwrightHeadless.calls[0].waitForRedirect)
+            }
+            let rr = map([1, 2, 3, 4], () => false)
+            assert.strict.deepEqual(r, rr)
+        })
+
     })
 
-    describe('Camofox階不做inspect', function() {
+    describe('四階皆做inspect(含Camofox)', function() {
 
-        //鑑別用內容: 正文充足可被Readability解析, 但含inspect之captcha特徵字串。
-        //經inspect者判blocked, 未經inspect者解析成功——兩種結果可明確區分是否做了inspect
+        //鑑別用內容: 正文充足可被Readability解析, 但含inspect之captcha特徵字串
         let HTML_TRAP = '<html><head><title>驗證機制的技術分析</title></head><body><article>' +
             '<p>本文討論網站如何要求使用者 verify you are human，' + '這是一段足夠長的正文內容以便通過最低字數門檻。'.repeat(6) + '</p>' +
             '</article></body></html>'
 
-        it('camofox階不做inspect, 含攔截特徵之內容仍被解析並回成功', async function() {
+        it('camofox階亦做inspect, 攔阻頁不再被當文章回傳', async function() {
+
+            //此條先前斷言的是相反行為(camofox階不判識, 故含攔截特徵之內容仍回成功)。
+            //該豁免有兩條理由, 現皆不成立: 「合成內容」已被contentKind機制取代(該機制成立於豁免之後),
+            //「末階擋下無可升級」則與method:'curl'單階計畫矛盾——後者同樣無可升級卻照常判識。
+            //實測後果: 四階皆取回同一份Cloudflare挑戰頁時, camofox階把樣板當文章回傳
+            //(status:'success', title:'Just a moment...'), 呼叫端無任何欄位可據以察覺
             let fs = mkAll({
                 curl: [ok(HTML_BLOCK)],
                 playwrightHeadless: [ok(HTML_BLOCK)],
@@ -182,12 +221,29 @@ describe('階梯升級', function() {
             })
             let t = await run(URL_PLAIN, fs)
             let last = t.attempts[3]
-            let r = [t.status, t.method, last.status]
+            let r = [t.status, t.reason, last.method, last.status, last.type]
+            let rr = ['error', 'captcha', 'camofox', 'blocked', 'captcha']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('camofox階取回正常內容時照常成功', async function() {
+
+            //對照組: 判識開啟不得使原本可用的內容被擋
+            let fs = mkAll({
+                curl: [ok(HTML_BLOCK)],
+                playwrightHeadless: [ok(HTML_BLOCK)],
+                playwrightHead: [ok(HTML_BLOCK)],
+                camofox: [ok(HTML_OK)],
+            })
+            let t = await run(URL_PLAIN, fs)
+            let r = [t.status, t.method, t.attempts[3].status]
             let rr = ['success', 'camofox', 'success']
             assert.strict.deepEqual(r, rr)
         })
 
-        it('同一內容走前三階則被inspect判captcha, 證明差異來自Camofox階不做判識', async function() {
+        it('同一內容於四階之判識結果一致', async function() {
+
+            //對稱性: 同一份內容不因走到哪一階而得到不同判定
             let fs = mkAll({ curl: [ok(HTML_TRAP)], playwrightHeadless: [ok(HTML_OK)] })
             let t = await run(URL_PLAIN, fs)
             let r = [t.attempts[0].method, t.attempts[0].status, t.attempts[0].type]

@@ -94,9 +94,15 @@ function requiresHeadless(url) {
 
 
 //判識B, query參數中含真實網址之轉址服務
+//
+//**每一條都必須以 ^https?:\/\/ 錨定網域**, 與本檔其餘四組一致。
+//未錨定時該子字串出現在路徑任一處即命中: 實測
+//  https://attacker.example/p/youtube.com/redirect?q=http://169.254.169.254/latest/meta-data/
+//會被提取出雲端metadata端點之網址並實際發出請求; 同法亦可指向127.0.0.1等內網服務。
+//呼叫端把使用者提供之網址交給fetchWeb是常見用法(知識庫類), 故此為可觸發之SSRF
 let URL_PARAM_PATTERNS = [
-    { match: /linkedin\.com\/redir\/redirect/, param: 'url' },
-    { match: /youtube\.com\/redirect/, param: 'q' },
+    { match: /^https?:\/\/(?:[\w-]+\.)*linkedin\.com\/redir\/redirect/, param: 'url' },
+    { match: /^https?:\/\/(?:[\w-]+\.)*youtube\.com\/redirect/, param: 'q' },
 ]
 /**
  * 由轉址服務之網址中提取其query參數所帶之真實網址

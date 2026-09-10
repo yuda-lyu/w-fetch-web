@@ -1,6 +1,6 @@
 import { Readability } from '@mozilla/readability'
 import { JSDOM } from 'jsdom'
-import findAdapter from './findAdapter.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
 import { meetsMinContent, normalizeParsed } from './adapterContract.mjs'
 
 
@@ -24,16 +24,23 @@ async function _parseByAdapter(adapter, ctx, html, url) {
 }
 
 
-async function parseArticle(html, url, adapters) {
+/**
+ * 依已解析之adapter命中結果解析文章，未命中者走Readability
+ *
+ * adapter之挑選（findAdapter）刻意不在本函數內：它只取決於網址，與抓回之HTML無關，
+ * 故由runPlan於計畫執行前解析一次後傳入，詳見runPlan之_resolveAdapter
+ *
+ * @param {String} html 輸入網頁HTML字串
+ * @param {String} url 輸入網址字串
+ * @param {Object|null} hit 輸入findAdapter之結果物件，null視為未命中
+ * @returns {Promise} 回傳Promise，resolve回傳解析結果物件，本函數不會reject
+ */
+async function parseArticle(html, url, hit) {
 
-    let hit = await findAdapter(url, adapters)
-
-    //adapter選擇過程出錯時顯性回報, 不得靜默改走Readability——
-    //呼叫端註冊adapter即代表選定該解析階段, 靜默替換等於讓其經歷未選擇的處理管線階段
-    if (hit.type === 'error') {
-        return { success: false, reason: 'adapter-error', message: hit.message }
-    }
-    if (hit.type === 'hit') {
+    //須同時確認該adapter確實有parse掛點: 三個掛點各自獨立, 只註冊fetch而不註冊parse是合法的
+    //(見adapterContract之輸入契約), 此時解析仍走Readability。
+    //少了這個判斷, 只有fetch的adapter會在此以「adapter.parse is not a function」失敗
+    if (hit?.type === 'hit' && isfun(hit.adapter?.parse)) {
         return _parseByAdapter(hit.adapter, hit.ctx, html, url)
     }
 

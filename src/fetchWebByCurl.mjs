@@ -7,6 +7,7 @@ import withRetry from './withRetry.mjs'
 import { getOptPInt, getOptP0Int } from './getOpt.mjs'
 import { getCurlIdentity } from './requestIdentity.mjs'
 import { METHOD_CURL as METHOD } from './constants.mjs'
+import { checkHttpStatus } from './httpStatus.mjs'
 
 
 //預設值
@@ -104,14 +105,14 @@ async function fetchWebByCurl(url, opt = {}) {
             let html = lines.join('\n')
             lastHttpCode = httpCode
 
-            //5xx與429為可重試
-            if (httpCode >= 500 || httpCode === 429) {
-                return { ok: false, reason: 'http-error', message: `HTTP ${httpCode}`, httpCode, logDetail: `HTTP ${httpCode} ${url}` }
-            }
-
-            //4xx(429除外)不重試
-            if (httpCode >= 400) {
-                return { ok: false, retryable: false, reason: 'http-error', message: `HTTP ${httpCode}`, httpCode }
+            //HTTP狀態之判準由httpStatus模組單一擁有, 四個抓取器共用
+            let bad = checkHttpStatus(httpCode)
+            if (bad) {
+                let out = { ok: false, retryable: bad.retryable, reason: bad.reason, message: bad.message, httpCode }
+                if (bad.retryable) {
+                    out.logDetail = bad.message + ' ' + url
+                }
+                return out
             }
 
             //內容過短亦不重試: 再抓一次仍是同一份內容

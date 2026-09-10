@@ -81,6 +81,19 @@ let htmlCfManagedNoBox = `<!DOCTYPE html><html><head><meta charset="utf-8"><titl
 let htmlBlank = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>b</title></head><body><p>blank</p></body></html>`
 
 
+//長篇簡體中文攔阻頁: 使用端判識器機制之動機情境
+//
+//此頁刻意兼具三個性質, 缺一則測不到該機制存在的理由:
+//  一、內建判識器全數漏判——關鍵字皆為英文, 此頁一個都不含
+//  二、可見文字遠超EMPTY_VISIBLE_MAX, 故empty這道兜底也攔不下(攔阻頁文案一長即如此)
+//  三、可見文字亦超過SPARSE_VISIBLE_MAX, 故若對使用端判識器套內容量閘門, 註冊了也不會被比對
+//文案取自實測所見之樣板措辭, 重複至長度落在上述帶內
+let htmlCnChallenge = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>安全验证</title></head>` +
+    `<body><div class="sec-container"><p>` +
+    '正在进行安全检测，为保障您的访问安全，系统需要检测当前网络环境，该过程通常需要几秒钟，请耐心等待并不要关闭此页面。'.repeat(12) +
+    `</p></div></body></html>`
+
+
 /**
  * 啟動本機測試用HTTP伺服器
  *
@@ -93,6 +106,7 @@ let htmlBlank = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>b</titl
  * /short 回200內容過短頁；
  * /challenge 回200 Cloudflare挑戰頁；
  * /nextdata 回200內嵌__NEXT_DATA__但可見文字極少之頁面；
+ * /cnchallenge 回200長篇簡體中文攔阻頁(內建判識器全數漏判)；
  * /error500 回500可重試錯誤；
  * /count500 回500可重試錯誤並計次，供斷言實際重試次數；
  * 其餘回404
@@ -157,6 +171,10 @@ function serverForTest() {
                 send(200, htmlBlank)
                 return
             }
+            if (pathname === '/cnchallenge') {
+                send(200, htmlCnChallenge)
+                return
+            }
             if (pathname === '/error500') {
                 send(500, htmlNotFound)
                 return
@@ -191,5 +209,5 @@ function serverForTest() {
 }
 
 
-export { MARKER, htmlArticle, htmlShort, htmlChallenge, htmlNotFound, htmlNextData, htmlCfIframe, htmlCfManaged, htmlCfManagedNoBox, htmlBlank }
+export { MARKER, htmlArticle, htmlShort, htmlChallenge, htmlNotFound, htmlNextData, htmlCfIframe, htmlCfManaged, htmlCfManagedNoBox, htmlBlank, htmlCnChallenge }
 export default serverForTest

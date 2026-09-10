@@ -371,7 +371,7 @@ describe('判識器之比對順序(R23)', function() {
             ['<html><body>verify you are human</body></html>', 'human verification page'],
             ['<html><body>request has been blocked</body></html>', 'server security block'],
             ['<html><head><title>Access Denied</title></head><body>x</body></html>', 'access denied (WAF/CDN block)'],
-            ['<html><body>something went wrong at x.com</body></html>', 'X/Twitter error page'],
+            ['<html><body>something went wrong <a href="https://x.com/">x</a></body></html>', 'X/Twitter error page'],
             ['<html><body>secitptpage wx.qq.com</body></html>', 'WeChat verification page'],
             ['<html><head><meta http-equiv="refresh" content="0;url=https://a.com/"></head><body>x</body></html>', 'meta refresh redirect'],
             ['<html><body>c-wiz news.google.com</body></html>', 'Google News wrapper'],
@@ -423,11 +423,23 @@ describe('個別判識器之案例', function() {
     })
 
     it('X與Twitter之錯誤頁判captcha', function() {
+
+        //網域須以「//」錨定: 裸字串比對會使imgix.com、mybox.com等任何以x.com結尾之網域誤判
         let r = [
-            '<html><head><title>x</title></head><body><p>something went wrong on x.com</p></body></html>',
-            '<html><head><title>x</title></head><body><p>something went wrong on twitter.com</p></body></html>',
+            '<html><head><title>x</title></head><body><p>something went wrong <a href="https://x.com/home">retry</a></p></body></html>',
+            '<html><head><title>x</title></head><body><p>something went wrong <a href="https://twitter.com/home">retry</a></p></body></html>',
         ].map((h) => [inspectHtml(h).type, inspectHtml(h).message])
         let rr = [['captcha', 'X/Twitter error page'], ['captcha', 'X/Twitter error page']]
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('相似網域不因x.com子字串而誤判', function() {
+
+        //imgix.com、mybox.com 等以 x.com 結尾之網域, 其錯誤頁不該被判為X/Twitter攔阻頁
+        let r = ['imgix.com', 'mybox.com', 'phoenix.com'].map((d) => {
+            return inspectHtml('<html><head><title>Error</title></head><body><p>something went wrong at ' + d + '</p></body></html>').type
+        })
+        let rr = ['pass', 'pass', 'pass']
         assert.strict.deepEqual(r, rr)
     })
 
@@ -436,6 +448,73 @@ describe('個別判識器之案例', function() {
         let t = inspectHtml(html)
         let r = [t.pass, t.type, t.message]
         let rr = [false, 'redirect', 'Google News wrapper']
+        assert.strict.deepEqual(r, rr)
+    })
+
+})
+
+
+//D1回歸: 內容量閘門依證據強度決定是否套用。
+//
+//先前此欄為 anyContent（語意是「要不要套閘門」），分的不是證據強度而是「例外與否」，
+//於是標題型的強證據也被閘門擋掉——這是在補救「閘門沒套齊」時造成的新同型錯誤
+describe('內容量閘門依證據強度套用(D1回歸)', function() {
+
+    let mk = (title, n) => '<html><head><title>' + title + '</title></head><body><p>' +
+        '請稍候，我們正在驗證您的瀏覽器。'.repeat(n) + '</p></body></html>'
+
+    it('標題型強證據不受內容量影響, 文案再長仍擋下', function() {
+
+        //真實Cloudflare挑戰頁之標題即為「Just a moment...」; 多語系或Enterprise自訂挑戰頁
+        //之文案可超過500字, 舊實作於此漏判
+        let r = [1, 10, 30, 50, 100].map((n) => inspectHtml(mk('Just a moment...', n)).pass)
+        let rr = [false, false, false, false, false]
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('access denied之標題型與Akamai內文型分屬不同強度', function() {
+
+        //標題型為頁面自我宣告身分, 屬強證據; Akamai型之兩個條件皆為內文字串, 仍屬弱證據
+        let long = '這是一段足夠長度的正文內容用以超過內容量閘門。'.repeat(40)
+        let r = [
+
+            //標題型: 內容再長仍擋下
+            inspectHtml('<html><head><title>Access Denied - CDN</title></head><body><p>' + long + '</p></body></html>').message,
+
+            //Akamai型: 內容充足時不誤判(一篇談論Akamai攔阻的文章)
+            inspectHtml('<html><head><title>技術文章</title></head><body><p>談 access denied 與 edgesuite.net 的關係。' + long + '</p></body></html>').pass,
+
+            //Akamai型: 內容稀少時仍擋下
+            inspectHtml('<html><head><title>Error</title></head><body><p>access denied by edgesuite.net</p></body></html>').message,
+        ]
+        let rr = ['access denied (WAF/CDN block)', true, 'access denied (Akamai)']
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('弱證據仍受閘門保護, 正常長文談論反爬蟲不誤判', function() {
+        let art = (t) => '<html><head><title>技術文章</title></head><body><article><p>' + t + '</p><p>' +
+            '這是一段足夠長度的正文內容。'.repeat(40) + '</p></article></body></html>'
+        let r = [
+            'perimeterx 是另一家供應商',
+            '挑戰頁會顯示 verify you are human',
+            'captcha 與 challenge 的設計取捨',
+            'your request has been blocked 是常見文案',
+        ].map((t) => inspectHtml(art(t)).pass)
+        let rr = [true, true, true, true]
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('強證據判識器之數量與身分', function() {
+
+        //change-detector: 新增strong標記時應同時確認該判準是否真為「頁面自我宣告」,
+        //而非只是想讓某個案例通過
+        let strongCases = [
+            ['<html><head><title>Just a moment...</title></head><body><p>' + 'x'.repeat(2000) + '</p></body></html>', 'Cloudflare/anti-bot challenge'],
+            ['<html><head><title>Access Denied</title></head><body><p>' + 'x'.repeat(2000) + '</p></body></html>', 'access denied (WAF/CDN block)'],
+            ['<html><head><meta http-equiv="refresh" content="0;url=https://a.com/"><title>t</title></head><body><p>' + 'x'.repeat(2000) + '</p></body></html>', 'meta refresh redirect'],
+        ]
+        let r = strongCases.map(([h]) => inspectHtml(h).message)
+        let rr = strongCases.map(([, m]) => m)
         assert.strict.deepEqual(r, rr)
     })
 

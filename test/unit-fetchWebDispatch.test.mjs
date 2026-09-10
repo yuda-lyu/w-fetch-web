@@ -1,6 +1,7 @@
 import assert from 'assert'
 import map from 'lodash-es/map.js'
 import fetchWeb from '../src/fetchWeb.mjs'
+import parseArticle from '../src/parseArticle.mjs'
 import { htmlArticle } from './tools/serverForTest.mjs'
 
 
@@ -98,16 +99,36 @@ describe('fetchWeb之調度行為', function() {
 
     describe('Readability解析拋錯', function() {
 
-        it('JSDOM或Readability拋錯時轉為parse-error, 不使fetchWeb reject', async function() {
+        //html之toString拋錯, JSDOM於建構時取字串即失敗, 驅動parseArticle之catch
+        let mkBadHtml = () => ({
+            toString: () => {
+                throw new Error('jsdom boom')
+            },
+        })
 
-            //html之toString拋錯, JSDOM於建構時取字串即失敗, 驅動_parseArticle之catch。
-            //須同時關閉inspect, 否則inspectHtml會先以isestr判非字串而回empty, 走不到解析
-            let bad = {
-                toString: () => {
-                    throw new Error('jsdom boom')
-                },
+        it('parseArticle攔下JSDOM或Readability之拋錯, 轉為parse-error', async function() {
+
+            //直接對parseArticle驗: 此前是經fetchWeb以「抓取器回傳非字串html」驅動,
+            //但那條路徑現在會先被抓取端契約攔下(見下一條), 走不到解析器。
+            //解析器自身的錯誤邊界仍須有測試, 故改為直接呼叫
+            let t = 'no-reject'
+            let out = null
+            try {
+                out = await parseArticle(mkBadHtml(), URL_PLAIN, null)
             }
-            let fs = { curl: async () => ({ method: 'curl', status: 'success', html: bad }) }
+            catch (err) {
+                t = err.message
+            }
+            let r = [t, out?.success, out?.reason]
+            let rr = ['no-reject', false, 'parse-error']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('抓取器回傳非字串html時於抓取邊界即攔下, 不使fetchWeb reject', async function() {
+
+            //歸因為fetcher-error而非parse-error: 問題出在抓取器違反輸出契約,
+            //不是解析器解不出來。此前無此檢核, 該值會一路流到JSDOM才炸
+            let fs = { curl: async () => ({ method: 'curl', status: 'success', html: mkBadHtml() }) }
             let t = 'no-reject'
             let out = null
             try {
@@ -116,8 +137,31 @@ describe('fetchWeb之調度行為', function() {
             catch (err) {
                 t = err.message
             }
-            let r = [t, out === null ? 'threw' : out.status, out === null ? '' : out.reason]
-            let rr = ['no-reject', 'error', 'parse-error']
+            let r = [t, out?.status, out?.reason]
+            let rr = ['no-reject', 'error', 'fetcher-error']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('抓取器拋錯或reject時亦不使fetchWeb reject', async function() {
+
+            //fetchWeb之JSDoc明載「本函數不會reject」, 但此前抓取器拋錯會直接穿透——
+            //四個內建抓取器不拋錯故不出事, 而opt._fetchers是文件化的測試接縫,
+            //adapter之fetch掛點更是呼叫端程式碼
+            let r = []
+            for (let fn of [async () => {
+                throw new Error('boom')
+            }, () => Promise.reject(new Error('rej'))]) {
+                let out = null
+                let t = 'no-reject'
+                try {
+                    out = await fetchWeb(URL_PLAIN, { showLog: false, method: 'curl', _fetchers: { curl: fn } })
+                }
+                catch (err) {
+                    t = err.message
+                }
+                r.push([t, out?.status, out?.reason])
+            }
+            let rr = [['no-reject', 'error', 'fetcher-error'], ['no-reject', 'error', 'fetcher-error']]
             assert.strict.deepEqual(r, rr)
         })
 

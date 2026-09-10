@@ -12,7 +12,7 @@ let NETWORK_IDLE_WAIT_MS = 10000
  * @param {Object} page 輸入Playwright之page物件
  * @param {String} url 輸入待導航網址字串
  * @param {Integer} navTimeout 輸入導航最長等待毫秒整數
- * @returns {Promise} 回傳Promise，resolve代表導航與等待流程結束
+ * @returns {Promise} 回傳Promise，resolve回傳首次導航之Response物件（供呼叫端檢核HTTP狀態），同頁錨點導航等情形可能為null
  * @example
  *
  * import { chromium } from 'playwright'
@@ -38,7 +38,10 @@ async function navigateWithRedirectWait(page, url, navTimeout) {
 
     let originalHost = new URL(url).hostname
 
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeout })
+    //回傳首次導航之Response供呼叫端檢核HTTP狀態
+    //轉址後之最終頁狀態不在此物件內: 本函數之轉址由頁面內JS發動, 其請求不經此次導航。
+    //故本值代表「所要求之網址本身回了什麼」, 這正是要檢核的對象
+    let resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeout })
 
     await page
         .waitForURL((u) => !u.href.includes(originalHost), { timeout: REDIRECT_WAIT_MS })
@@ -47,6 +50,8 @@ async function navigateWithRedirectWait(page, url, navTimeout) {
     await page
         .waitForLoadState('networkidle', { timeout: NETWORK_IDLE_WAIT_MS })
         .catch(() => {})
+
+    return resp
 }
 
 
