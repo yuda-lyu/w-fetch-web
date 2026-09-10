@@ -97,7 +97,7 @@ let htmlBlank = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>b</titl
  * /count500 回500可重試錯誤並計次，供斷言實際重試次數；
  * 其餘回404
  *
- * @returns {Promise} 回傳Promise，resolve回傳{port,url,close}物件，其中url為由路徑組出完整網址之函數，close為關閉伺服器之async函數
+ * @returns {Promise} 回傳Promise，resolve回傳{port,url,nCount500,lastHeaders,close}物件，其中url為由路徑組出完整網址之函數，nCount500為取得500次數之函數，lastHeaders為依路徑取得最後一次請求標頭之函數(預設'/article')，close為關閉伺服器之async函數
  */
 function serverForTest() {
     return new Promise((resolve) => {
@@ -105,12 +105,24 @@ function serverForTest() {
         //供 /count500 計數
         let nCount500 = 0
 
+        //記錄各路徑最後一次收到的請求標頭, 用於驗證HTTP請求身分是否確實送出
+        //
+        //須依路徑分別記錄而非只留「最後一次」: 瀏覽器載入頁面後會自動再請求/favicon.ico,
+        //其Referer為該頁自身網址, 會蓋掉主文件的標頭而使斷言看到錯誤的值
+        let headersByPath = {}
+
         let server = http.createServer((req, res) => {
 
             let pathname = (req.url || '').split('?')[0]
             let send = (code, body) => {
                 res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8' })
                 res.end(body)
+            }
+
+            headersByPath[pathname] = {
+                userAgent: req.headers['user-agent'] || '',
+                referer: req.headers.referer || '',
+                acceptLanguage: req.headers['accept-language'] || '',
             }
 
             if (pathname === '/article') {
@@ -166,6 +178,7 @@ function serverForTest() {
                 port,
                 url: (pathname) => `http://127.0.0.1:${port}${pathname}`,
                 nCount500: () => nCount500,
+                lastHeaders: (pathname = '/article') => headersByPath[pathname] || null,
                 close: () => new Promise((resolve) => {
                     server.close(() => {
                         resolve(true)

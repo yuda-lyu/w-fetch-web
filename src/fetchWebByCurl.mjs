@@ -4,16 +4,14 @@ import getUrlErrorResult from './getUrlErrorResult.mjs'
 import { fetchedAtIso } from './fetchedAt.mjs'
 import { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
 import withRetry from './withRetry.mjs'
-import { getOptPInt, getOptP0Int, getOptStr } from './getOpt.mjs'
+import { getOptPInt, getOptP0Int } from './getOpt.mjs'
+import { getCurlIdentity } from './requestIdentity.mjs'
 import { METHOD_CURL as METHOD } from './constants.mjs'
 
 
 //預設值
 let DEFAULT_TIMEOUT_MS = 15000
 let MIN_HTML_LENGTH = 100
-let DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-let DEFAULT_REFERER = 'https://www.google.com/'
-let DEFAULT_ACCEPT_LANG = 'en-US,en;q=0.9,zh-TW;q=0.8'
 
 
 //採非同步execFile, 不可用execFileSync, 否則抓取期間會阻塞整個node event loop
@@ -32,9 +30,9 @@ let execFilePm = promisify(execFile)
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {Integer} [opt.timeoutMs=15000] 輸入curl最長等待毫秒整數，預設15000
  * @param {Integer} [opt.maxRetries=5] 輸入失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
- * @param {String} [opt.userAgent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'] 輸入自訂User-Agent字串
- * @param {String} [opt.referer='https://www.google.com/'] 輸入自訂Referer字串，預設'https://www.google.com/'
- * @param {String} [opt.acceptLanguage='en-US,en;q=0.9,zh-TW;q=0.8'] 輸入自訂Accept-Language字串，預設'en-US,en;q=0.9,zh-TW;q=0.8'
+ * @param {String} [opt.userAgent] 輸入自訂User-Agent字串，未給時採requestIdentity.mjs之DEFAULT_UA（偽裝為Chrome，否則curl會送出自己的UA而被擋）
+ * @param {String} [opt.referer] 輸入自訂Referer字串，未給時採requestIdentity.mjs之DEFAULT_REFERER
+ * @param {String} [opt.acceptLanguage] 輸入自訂Accept-Language字串，未給時採requestIdentity.mjs之DEFAULT_ACCEPT_LANG
  * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,httpCode,contentKind,method,fetchedAt,attempts}（contentKind恆為'raw'），失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}，本函數不會reject
  * @example
  *
@@ -74,14 +72,8 @@ async function fetchWebByCurl(url, opt = {}) {
     //maxRetries
     let maxRetries = getOptP0Int(opt, 'maxRetries', DEFAULT_MAX_RETRIES)
 
-    //ua
-    let ua = getOptStr(opt, 'userAgent', DEFAULT_UA)
-
-    //referer
-    let referer = getOptStr(opt, 'referer', DEFAULT_REFERER)
-
-    //acceptLang
-    let acceptLang = getOptStr(opt, 'acceptLanguage', DEFAULT_ACCEPT_LANG)
+    //HTTP請求身分, 未指定者採預設; 預設值與瀏覽器階之處置理由見requestIdentity.mjs
+    let { userAgent: ua, referer, acceptLanguage: acceptLang } = getCurlIdentity(opt)
 
     //curl拋錯時取不到狀態碼, 以前一次成功解析到者回報, 供呼叫端辨識是連線失敗或站方回應異常
     let lastHttpCode = 0

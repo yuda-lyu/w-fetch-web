@@ -1,11 +1,18 @@
 import assert from 'assert'
 import map from 'lodash-es/map.js'
-import fetchWeb, { inspectHtml } from '../src/fetchWeb.mjs'
+import fetchWeb from '../src/fetchWeb.mjs'
 import { htmlArticle } from './tools/serverForTest.mjs'
 
 
-//補齊覆蓋率量測後仍為零執行之分支
-//以opt._fetchers驅動, 不啟動真實瀏覽器
+//fetchWeb之調度行為: 判識結果如何影響升級、欄位如何傳遞、錯誤如何收斂、訊息如何輸出。
+//以opt._fetchers驅動, 不啟動真實瀏覽器。
+//
+//階梯升級之主體規格於 unit-escalation.test.mjs; 本檔為其餘調度面向,
+//兩檔之假抓取函數簽章不同(該檔支援依序回傳多個結果, 此檔為單發), 故未合併
+//
+//本檔原名 unit-remainingBranches, 檔頭寫的是「補齊覆蓋率量測後仍為零執行之分支」——
+//以覆蓋率數字而非規格為組織原則, 於是inspectHtml的規格被切在兩個檔。
+//該區塊已移回 unit-inspectHtml, 其餘依其真實主題重新命名
 
 let mk = (method, result) => async () => ({ method, ...result })
 let ok = (html, extra = {}) => ({ status: 'success', html, ...extra })
@@ -13,58 +20,7 @@ let URL_PLAIN = 'https://example.com/article'
 let run = (fs, extra = {}) => fetchWeb(URL_PLAIN, { showLog: false, _fetchers: fs, ...extra })
 
 
-describe('剩餘分支', function() {
-
-    describe('inspectHtml 未覆蓋之偵測器', function() {
-
-        it('同時含captcha與challenge且可見文字極少, 判generic CAPTCHA', function() {
-            let t = inspectHtml('<html><head><title>x</title></head><body><p>please solve the captcha to pass this challenge</p></body></html>')
-            let r = [t.pass, t.type, t.message]
-            let rr = [false, 'captcha', 'generic CAPTCHA']
-            assert.strict.deepEqual(r, rr)
-        })
-
-        it('內容量足夠時不判generic CAPTCHA, 且有無article標籤皆然', function() {
-
-            //R14前之判準以「不含<article>」為豁免條件, 使真挑戰頁只要含該標籤即漏判。
-            //改以內容量為分野後, 兩種形狀的正常文章都放行, 而豁免不再與標籤有關
-            let body = '<p>this article explains captcha and challenge design in depth. </p>' +
-                '<p>' + 'it continues with enough sentences, commas and length that it reads as a genuine article body rather than boilerplate. '.repeat(5) + '</p>'
-            let r = [
-                inspectHtml('<html><head><title>x</title></head><body><article>' + body + '</article></body></html>').type,
-                inspectHtml('<html><head><title>x</title></head><body>' + body + '</body></html>').type,
-            ]
-            let rr = ['pass', 'pass']
-            assert.strict.deepEqual(r, rr)
-        })
-
-        it('含article且可見文字極少時仍判generic CAPTCHA', function() {
-
-            //鎖住R14之修正: <article>標籤不再是豁免條件, 否則真挑戰頁只要帶該標籤即漏判
-            let html = '<html><head><title>x</title></head><body><article><p>captcha challenge</p></article></body></html>'
-            let r = inspectHtml(html).type
-            let rr = 'captcha'
-            assert.strict.deepEqual(r, rr)
-        })
-
-        it('X與Twitter之錯誤頁判captcha', function() {
-            let r = map([
-                '<html><head><title>x</title></head><body><p>something went wrong on x.com</p></body></html>',
-                '<html><head><title>x</title></head><body><p>something went wrong on twitter.com</p></body></html>',
-            ], (h) => [inspectHtml(h).type, inspectHtml(h).message])
-            let rr = [['captcha', 'X/Twitter error page'], ['captcha', 'X/Twitter error page']]
-            assert.strict.deepEqual(r, rr)
-        })
-
-        it('Google News之c-wiz包裝頁判redirect', function() {
-            let html = '<html><head><title>x</title></head><body><c-wiz>from news.google.com</c-wiz><p>' + 'z'.repeat(300) + '</p></body></html>'
-            let t = inspectHtml(html)
-            let r = [t.pass, t.type, t.message]
-            let rr = [false, 'redirect', 'Google News wrapper']
-            assert.strict.deepEqual(r, rr)
-        })
-
-    })
+describe('fetchWeb之調度行為', function() {
 
     describe('各判識型別皆觸發續下一階', function() {
 

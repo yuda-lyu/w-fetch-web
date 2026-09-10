@@ -23,6 +23,10 @@ Note:
 - `fetchWebByPlaywrightHeadless` and `fetchWebByPlaywrightHead` need Chrome installed (playwright uses `channel: 'chrome'`).
 - `fetchWebByCamofox` spawns the `@askjo/camofox-browser` server as a child process, and needs the Camoufox binaries fetched by that package's postinstall.
 
+Concurrency:
+- `fetchWebByCamofox` binds a **fixed port** (default `19377`) and **must not run concurrently on the same port**. A second concurrent call fails to bind, then mistakes the first call's server for its own; whichever finishes first kills that server, and the other one fails with `camofox-error`. To run several at once, give each call a distinct `port`.
+- This also applies to `fetchWeb` in `auto` mode, since its last escalation step is `fetchWebByCamofox`. Methods ①②③ have no such limit.
+
 #### Functions:
 | function | description |
 | --- | --- |
@@ -97,6 +101,31 @@ await test()
 | `success` | 取得並解析成功 | `method`、`htmlLength`（**原始HTML長度**，與頂層`contentLength`之正文長度不同） |
 | `failed` | 抓取本身失敗 | `method`、`reason`、`message` |
 | `blocked` | 取得內容但被判識或解析拒絕 | `method`、`type`、`reason`、`message` |
+
+判識所致之`blocked`，其`reason`與`type`同值，故呼叫端可一律讀`reason`取得失敗歸因。
+
+#### Reasons:
+`reason`為失敗歸因，供呼叫端分辨該重試、告警或修adapter。完整值域（權威定義見`src/constants.mjs`之`REASONS`）：
+
+| reason | 意義 | 重試是否有用 |
+| --- | --- | --- |
+| `invalid-url` | 網址非字串或非http/https | 否 |
+| `invalid-method` | `opt.method`不在支援清單內 | 否 |
+| `http-error` | HTTP狀態碼為4xx或5xx | 5xx與429會自動重試，4xx否 |
+| `empty-response` | HTTP回應本文過短（curl階） | 否 |
+| `curl-error` | curl執行失敗（連線失敗、逾時等） | 是（已自動重試） |
+| `playwright-error` | Playwright導航或取內容失敗 | 是（已自動重試） |
+| `camofox-not-found` | 未安裝`@askjo/camofox-browser` | 否 |
+| `camofox-error` | Camofox server啟動、tab建立或snapshot傳輸失敗 | 是（已自動重試） |
+| `camofox-empty` | Camofox取得之snapshot確實無足量內容 | 否 |
+| `parse-error` | Readability或adapter之`parse`拋錯或回傳非法結果 | 否 |
+| `empty-content` | 解析出之正文未達最低字數 | 否 |
+| `adapter-error` | adapter之`match`拋錯（顯性回報，不靜默改用預設解析器） | 否，須修adapter |
+| `adapter-parse-failed` | adapter回`success:false`且未自報`reason` | 否 |
+| `adapter-parse-miss` | adapter命中網域但頁面缺少其預期之結構 | 否 |
+| `unknown` | 無上游歸因可用之退路值 | — |
+
+使用端adapter可於`parse`回傳自訂之`reason`，該值會原樣保留至頂層與`attempts`，不受上表限制。
 
 #### Result of fetchWeb:
 ```alias

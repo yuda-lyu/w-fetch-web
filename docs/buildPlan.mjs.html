@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>extractPageContent.mjs - Documentation</title>
+    <title>buildPlan.mjs - Documentation</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -35,7 +35,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">extractPageContent.mjs</h1>
+    <h1 class="page-title">buildPlan.mjs</h1>
     
 
     
@@ -45,107 +45,104 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>import estimateVisibleText from './estimateVisibleText.mjs'
+            <pre class="prettyprint source linenums"><code>import { METHOD_CURL, METHOD_PW_HEADLESS, METHOD_PW_HEADED, METHOD_CAMOFOX } from './constants.mjs'
+import { requiresHeaded, requiresCamofox, requiresJsRedirect, requiresHeadless } from './routeByUrl.mjs'
 
 
-//可見文字低於此字數才啟動Shadow DOM穿透
+//各階之靜態描述
+//key為抓取器識別、method為結果之方法名稱、label供訊息顯示、
+//inspect表該階是否做原始內容判識、redirectAware表該階是否受轉址旗標影響
 //
-//本值與inspectHtml.mjs之EMPTY_VISIBLE_MAX**必須相同**: 後者決定「低於多少判為空內容」。
-//兩者一致時, 會被判空的頁面正好就是會啟動穿透的頁面; 不一致即開縫,
-//出現「判空但不穿透」(升級後仍空, 白費一階)或「穿透了卻仍被判空」之頁面。
-//此約束由 unit-inspectHtml 之「兩處門檻須一致」鎖住
-let SHADOW_VISIBLE_THRESHOLD = 200
+//Camofox一律不做判識: inspectHtml之用途為階梯升級決策, 且判識對象為抓取器取回之原始文件,
+//而Camofox回傳者為accessibility snapshot合成之內容(見snapshotToHtml),
+//又其為階梯最後一階, 擋下亦無可升級之方法, 只會放棄一次原本可能成功的解析
+let STEPS = {
+    curl: Object.freeze({ key: 'curl', method: METHOD_CURL, label: 'curl', inspect: true, redirectAware: false }),
+    headless: Object.freeze({ key: 'headless', method: METHOD_PW_HEADLESS, label: 'Playwright headless', inspect: true, redirectAware: true }),
+    headed: Object.freeze({ key: 'headed', method: METHOD_PW_HEADED, label: 'Playwright headed', inspect: true, redirectAware: true }),
+    camofox: Object.freeze({ key: 'camofox', method: METHOD_CAMOFOX, label: 'Camofox', inspect: false, redirectAware: false }),
+}
 
-//Shadow DOM取得之文字低於此字數視為無效, 仍回傳原HTML
-let SHADOW_MIN_CHARS = 50
 
-
-//轉義HTML特殊字元
-function _esc(s) {
-    return String(s).replace(/[&lt;>&amp;]/g, (c) => ({ '&lt;': '&amp;lt;', '>': '&amp;gt;', '&amp;': '&amp;amp;' }[c]))
+//對外method選項至階之對應
+//注意'playwright'為公開選項名, 其結果之method為'playwright-headless', 兩者刻意不同名, 改動即為破壞性變更
+let METHOD_OPTIONS = {
+    'curl': 'curl',
+    'playwright': 'headless',
+    'playwright-headed': 'headed',
+    'camofox': 'camofox',
 }
 
 
 /**
- * 由Playwright之page提取網頁HTML，可見文字過少時穿透Shadow DOM
+ * 依網址與選項產生執行計畫
  *
- * 先取page.content()，若估算可見文字已達門檻則直接回傳；否則遞迴穿透Shadow DOM取得
- * 各層innerText，再依換行切段重組為含article之簡易HTML，供Readability解析。
+ * 四條網域分流與指定方法，差別僅在於「要跑哪幾階」，故一律表達為step陣列，
+ * 交由同一個runPlan執行，不再各自複製一份「抓取至判識至解析」流程。
  *
- * 回傳一併標明內容形態：合成內容之標籤結構已被剝除，其可信的判識證據與原始文件不同，
- * 故由本函數（唯一知道走了哪個出口者）標明，而非由下游猜測
+ * 本函數只回傳**純資料**：不捕捉url與opt、不建立closure、不修改任何共享狀態。
+ * 轉址旗標之初值以redirect欄位回報，由runPlan擁有其後續變化
  *
- * @param {Object} page 輸入Playwright之page物件
- * @returns {Promise} 回傳Promise，resolve回傳{html,contentKind}物件，contentKind為'raw'或'synthesized'
+ * @param {String} url 輸入待抓取網址字串
+ * @param {String} method 輸入方法字串，'auto'代表自動階梯升級
+ * @param {Boolean} doInspect 輸入是否做原始內容判識布林值，false時各階之inspect一律關閉
+ * @returns {Object} 回傳{plan,redirect,log}物件，plan為step描述陣列，redirect為轉址旗標初值，log為分流說明字串；method不合法時回傳{error}
  * @example
  *
- * import { chromium } from 'playwright'
- * import extractPageContent from './src/extractPageContent.mjs'
+ * import buildPlan from './src/buildPlan.mjs'
  *
- * let test = async () => {
+ * console.log(buildPlan('https://example.com/', 'auto', true).plan.map((s) => s.key))
+ * // => ['curl', 'headless', 'headed', 'camofox']
  *
- *     let browser = await chromium.launch({ headless: true, channel: 'chrome' })
- *     let page = await browser.newPage()
- *     await page.goto('https://example.com/')
- *     let { html, contentKind } = await extractPageContent(page)
- *     console.log(html.length, contentKind)
- *     // => 234 'raw'
- *     await browser.close()
- *
- * }
- * await test()
- *     .catch((err) => {
- *         console.log(err)
- *     })
+ * console.log(buildPlan('https://mp.weixin.qq.com/s/a', 'auto', true).plan.map((s) => s.key))
+ * // => ['camofox']
  *
  */
-async function extractPageContent(page) {
+function buildPlan(url, method, doInspect) {
 
-    let html = await page.content()
-    let visible = estimateVisibleText(html)
-    if (visible.length >= SHADOW_VISIBLE_THRESHOLD) {
-        return { html, contentKind: 'raw' }
-    }
-
-    //穿透Shadow DOM
-    let shadow = await page.evaluate(() => {
-        function getDeepInnerText(el) {
-            if (!el) {
-                return ''
-            }
-            let text = ''
-            if (el.shadowRoot) {
-                for (let child of el.shadowRoot.children) {
-                    text += getDeepInnerText(child)
-                }
-                return text
-            }
-            if (el.children &amp;&amp; el.children.length > 0) {
-                for (let child of el.children) {
-                    text += getDeepInnerText(child)
-                }
-                return text
-            }
-            return el.innerText || ''
+    let pick = (keys, log, redirect = false) => {
+        return {
+            plan: keys.map((k) => (doInspect ? STEPS[k] : { ...STEPS[k], inspect: false })),
+            redirect,
+            log,
         }
-        return getDeepInnerText(document.body || document.documentElement)
-    })
-
-    if (!shadow || shadow.length &lt; SHADOW_MIN_CHARS) {
-        return { html, contentKind: 'raw' }
     }
 
-    //由Shadow DOM內文重組為簡易HTML
-    let title = await page.title().catch(() => '')
-    let titleEsc = _esc(title || '')
-    let bodyEsc = _esc(shadow)
-    let synth = `&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;title>${titleEsc}&lt;/title>&lt;/head>&lt;body>&lt;article>${bodyEsc.split(/\n+/).map((p) => `&lt;p>${p}&lt;/p>`).join('\n')}&lt;/article>&lt;/body>&lt;/html>`
-    return { html: synth, contentKind: 'synthesized' }
+    //指定方法: 單一階, 不升級
+    if (method !== 'auto') {
+        let k = METHOD_OPTIONS[method]
+        if (!k) {
+            return { error: `unknown method "${method}" (valid: ${Object.keys(METHOD_OPTIONS).join(', ')})` }
+        }
+        return pick([k], '')
+    }
+
+    //判識D, 已知須Camofox之網站, 跳過方法①②③直接方法④
+    if (requiresCamofox(url)) {
+        return pick(['camofox'], 'camofox-required domain, jumping to camofox ...')
+    }
+
+    //判識C, 已知須headed模式之網站, 跳過curl與headless直接headed
+    if (requiresHeaded(url)) {
+        return pick(['headed', 'camofox'], 'headed-required domain, jumping to playwright-headed ...')
+    }
+
+    //判識A, 已知JS轉址域名, 跳過curl直接Playwright並等待轉址
+    if (requiresJsRedirect(url)) {
+        return pick(['headless', 'headed', 'camofox'], 'JS redirect domain, skipping curl ...', true)
+    }
+
+    //判識E, 已知SPA網站, 跳過curl直接Playwright無頭
+    if (requiresHeadless(url)) {
+        return pick(['headless', 'headed', 'camofox'], 'headless-required SPA domain, skipping curl ...')
+    }
+
+    //階梯式升級, curl至headless至headed至camofox
+    return pick(['curl', 'headless', 'headed', 'camofox'], '')
 }
 
 
-export { SHADOW_VISIBLE_THRESHOLD }
-export default extractPageContent
+export default buildPlan
 </code></pre>
         </article>
     </section>

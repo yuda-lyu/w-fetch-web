@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
     
 </nav>
 
@@ -47,26 +47,18 @@
         <article>
             <pre class="prettyprint source linenums"><code>import { execFile } from 'child_process'
 import { promisify } from 'util'
-import get from 'lodash-es/get.js'
-import isestr from 'wsemi/src/isestr.mjs'
-import ispint from 'wsemi/src/ispint.mjs'
-import isp0int from 'wsemi/src/isp0int.mjs'
-import cint from 'wsemi/src/cint.mjs'
-import delay from 'wsemi/src/delay.mjs'
 import getUrlErrorResult from './getUrlErrorResult.mjs'
-import getRetryWaitMs from './getRetryWaitMs.mjs'
+import { fetchedAtIso } from './fetchedAt.mjs'
+import { DEFAULT_MAX_RETRIES } from './getRetryWaitMs.mjs'
+import withRetry from './withRetry.mjs'
+import { getOptPInt, getOptP0Int } from './getOpt.mjs'
+import { getCurlIdentity } from './requestIdentity.mjs'
+import { METHOD_CURL as METHOD } from './constants.mjs'
 
-
-//方法名稱
-let METHOD = 'curl'
 
 //預設值
-let DEFAULT_MAX_RETRIES = 5
 let DEFAULT_TIMEOUT_MS = 15000
 let MIN_HTML_LENGTH = 100
-let DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-let DEFAULT_REFERER = 'https://www.google.com/'
-let DEFAULT_ACCEPT_LANG = 'en-US,en;q=0.9,zh-TW;q=0.8'
 
 
 //採非同步execFile, 不可用execFileSync, 否則抓取期間會阻塞整個node event loop
@@ -85,10 +77,10 @@ let execFilePm = promisify(execFile)
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {Integer} [opt.timeoutMs=15000] 輸入curl最長等待毫秒整數，預設15000
  * @param {Integer} [opt.maxRetries=5] 輸入失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
- * @param {String} [opt.userAgent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'] 輸入自訂User-Agent字串
- * @param {String} [opt.referer='https://www.google.com/'] 輸入自訂Referer字串，預設'https://www.google.com/'
- * @param {String} [opt.acceptLanguage='en-US,en;q=0.9,zh-TW;q=0.8'] 輸入自訂Accept-Language字串，預設'en-US,en;q=0.9,zh-TW;q=0.8'
- * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,httpCode,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}，本函數不會reject
+ * @param {String} [opt.userAgent] 輸入自訂User-Agent字串，未給時採requestIdentity.mjs之DEFAULT_UA（偽裝為Chrome，否則curl會送出自己的UA而被擋）
+ * @param {String} [opt.referer] 輸入自訂Referer字串，未給時採requestIdentity.mjs之DEFAULT_REFERER
+ * @param {String} [opt.acceptLanguage] 輸入自訂Accept-Language字串，未給時採requestIdentity.mjs之DEFAULT_ACCEPT_LANG
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,httpCode,contentKind,method,fetchedAt,attempts}（contentKind恆為'raw'），失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}，本函數不會reject
  * @example
  *
  * import fetchWebByCurl from './src/fetchWebByCurl.mjs'
@@ -113,7 +105,7 @@ let execFilePm = promisify(execFile)
 async function fetchWebByCurl(url, opt = {}) {
 
     //fetchedAt
-    let fetchedAt = new Date().toISOString()
+    let fetchedAt = fetchedAtIso()
 
     //check url
     let rErr = getUrlErrorResult(url, METHOD, fetchedAt)
@@ -122,46 +114,19 @@ async function fetchWebByCurl(url, opt = {}) {
     }
 
     //timeoutMs
-    let timeoutMs = get(opt, 'timeoutMs', null)
-    if (!ispint(timeoutMs)) {
-        timeoutMs = DEFAULT_TIMEOUT_MS
-    }
-    else {
-        timeoutMs = cint(timeoutMs)
-    }
+    let timeoutMs = getOptPInt(opt, 'timeoutMs', DEFAULT_TIMEOUT_MS)
 
     //maxRetries
-    let maxRetries = get(opt, 'maxRetries', null)
-    if (!isp0int(maxRetries)) {
-        maxRetries = DEFAULT_MAX_RETRIES
-    }
-    else {
-        maxRetries = cint(maxRetries)
-    }
+    let maxRetries = getOptP0Int(opt, 'maxRetries', DEFAULT_MAX_RETRIES)
 
-    //ua
-    let ua = get(opt, 'userAgent', null)
-    if (!isestr(ua)) {
-        ua = DEFAULT_UA
-    }
+    //HTTP請求身分, 未指定者採預設; 預設值與瀏覽器階之處置理由見requestIdentity.mjs
+    let { userAgent: ua, referer, acceptLanguage: acceptLang } = getCurlIdentity(opt)
 
-    //referer
-    let referer = get(opt, 'referer', null)
-    if (!isestr(referer)) {
-        referer = DEFAULT_REFERER
-    }
-
-    //acceptLang
-    let acceptLang = get(opt, 'acceptLanguage', null)
-    if (!isestr(acceptLang)) {
-        acceptLang = DEFAULT_ACCEPT_LANG
-    }
-
-    let lastReason = ''
-    let lastMessage = ''
+    //curl拋錯時取不到狀態碼, 以前一次成功解析到者回報, 供呼叫端辨識是連線失敗或站方回應異常
     let lastHttpCode = 0
 
-    for (let attempt = 1; attempt &lt;= maxRetries + 1; attempt++) {
+    //單次嘗試: 只判斷這一次的結果, 重試與退避交由withRetry
+    let attemptOnce = async () => {
         try {
 
             //curl, url由參數陣列傳遞無命令注入風險
@@ -188,71 +153,59 @@ async function fetchWebByCurl(url, opt = {}) {
 
             //5xx與429為可重試
             if (httpCode >= 500 || httpCode === 429) {
-                lastReason = 'http-error'
-                lastMessage = `HTTP ${httpCode}`
-                if (attempt &lt;= maxRetries) {
-                    let ms = getRetryWaitMs(attempt)
-                    process.stderr.write(`[fetchWebByCurl] HTTP ${httpCode} ${url}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
-                    await delay(ms)
-                    continue
-                }
-                return { status: 'error', url, message: lastMessage, reason: lastReason, httpCode, method: METHOD, fetchedAt, attempts: attempt }
+                return { ok: false, reason: 'http-error', message: `HTTP ${httpCode}`, httpCode, logDetail: `HTTP ${httpCode} ${url}` }
             }
 
             //4xx(429除外)不重試
             if (httpCode >= 400) {
-                return { status: 'error', url, message: `HTTP ${httpCode}`, reason: 'http-error', httpCode, method: METHOD, fetchedAt, attempts: attempt }
+                return { ok: false, retryable: false, reason: 'http-error', message: `HTTP ${httpCode}`, httpCode }
             }
 
-            //內容過短
+            //內容過短亦不重試: 再抓一次仍是同一份內容
             if (!html || html.length &lt; MIN_HTML_LENGTH) {
                 return {
-                    status: 'error',
-                    url,
-                    message: `response too short (${html ? html.length : 0} chars)`,
+                    ok: false,
+                    retryable: false,
                     reason: 'empty-response',
+                    message: `response too short (${html ? html.length : 0} chars)`,
                     httpCode,
-                    method: METHOD,
-                    fetchedAt,
-                    attempts: attempt,
                 }
             }
 
-            //成功
-            return {
-                status: 'success',
-                url,
-                html,
-                htmlLength: html.length,
-                httpCode,
-                method: METHOD,
-                fetchedAt,
-                attempts: attempt,
-            }
+            return { ok: true, html, httpCode }
         }
         catch (err) {
-            lastReason = 'curl-error'
-            lastMessage = err.message || String(err)
-            if (attempt &lt;= maxRetries) {
-                let ms = getRetryWaitMs(attempt)
-                process.stderr.write(`[fetchWebByCurl] curl error: ${lastMessage}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
-                await delay(ms)
-                continue
-            }
-            return {
-                status: 'error',
-                url,
-                message: lastMessage,
-                reason: lastReason,
-                httpCode: lastHttpCode || undefined,
-                method: METHOD,
-                fetchedAt,
-                attempts: attempt,
-            }
+            let message = err.message || String(err)
+            return { ok: false, reason: 'curl-error', message, httpCode: lastHttpCode || undefined, logDetail: 'curl error: ' + message }
         }
     }
 
-    return { status: 'error', url, message: lastMessage || 'max retries exceeded', reason: lastReason || 'curl-error', method: METHOD, fetchedAt, attempts: maxRetries + 1 }
+    let r = await withRetry(attemptOnce, { maxRetries, tag: 'fetchWebByCurl' })
+
+    if (r.ok) {
+        return {
+            status: 'success',
+            url,
+            html: r.html,
+            htmlLength: r.html.length,
+            contentKind: 'raw',
+            httpCode: r.httpCode,
+            method: METHOD,
+            fetchedAt,
+            attempts: r.attempts,
+        }
+    }
+
+    return {
+        status: 'error',
+        url,
+        message: r.message,
+        reason: r.reason,
+        httpCode: r.httpCode,
+        method: METHOD,
+        fetchedAt,
+        attempts: r.attempts,
+    }
 }
 
 
@@ -271,7 +224,7 @@ export default fetchWebByCurl
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Sep 05 2026 22:05:33 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Thu Sep 10 2026 18:00:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

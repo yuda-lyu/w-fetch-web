@@ -1,10 +1,10 @@
 import assert from 'assert'
-import inspectHtml from '../src/inspectHtml.mjs'
+import inspectHtml, { EMPTY_VISIBLE_MAX } from '../src/inspectHtml.mjs'
+import { SHADOW_VISIBLE_THRESHOLD } from '../src/extractPageContent.mjs'
 import { htmlArticle, htmlChallenge } from './tools/serverForTest.mjs'
 
 
 //inspectHtml為純函式, 不需啟動server, 故歸unit層
-//另有偵測器分支之補充案例於 unit-remainingBranches.test.mjs
 describe('inspectHtml', function() {
 
     it('正常文章頁通過檢測', function() {
@@ -73,6 +73,17 @@ describe('inspectHtml', function() {
             inspectHtml(123).type,
         ]
         let rr = ['empty', 'empty', 'empty']
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('判空門檻與Shadow DOM穿透門檻須一致', function() {
+
+        //兩者一致時, 會被判空的頁面正好就是會啟動穿透的頁面。
+        //不一致即開縫: 本值較高時中間帶的頁面被判空而升級, 但下一階同樣不啟動穿透,
+        //升級後仍是同一份空內容; 本值較低則出現「穿透了卻仍被判空」之頁面。
+        //此約束原本只存在於兩個檔各自的數字裡, 改其一而不改另一不會有任何測試失敗
+        let r = EMPTY_VISIBLE_MAX === SHADOW_VISIBLE_THRESHOLD
+        let rr = true
         assert.strict.deepEqual(r, rr)
     })
 
@@ -368,6 +379,63 @@ describe('判識器之比對順序(R23)', function() {
         ]
         let r = probes.map(([html]) => inspectHtml(html).message)
         let rr = probes.map(([, msg]) => msg)
+        assert.strict.deepEqual(r, rr)
+    })
+
+})
+
+
+//個別判識器之案例。
+//
+//此區塊原在 unit-remainingBranches.test.mjs——該檔以「補齊覆蓋率量測後仍為零執行之分支」
+//為組織原則, 於是同一個模組的規格被切在兩個檔, 讀者要看兩處才知道判識器的完整行為。
+//測試該按規格組織而非按覆蓋率數字組織, 故移回此處
+describe('個別判識器之案例', function() {
+
+    it('同時含captcha與challenge且可見文字極少, 判generic CAPTCHA', function() {
+        let t = inspectHtml('<html><head><title>x</title></head><body><p>please solve the captcha to pass this challenge</p></body></html>')
+        let r = [t.pass, t.type, t.message]
+        let rr = [false, 'captcha', 'generic CAPTCHA']
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('內容量足夠時不判generic CAPTCHA, 且有無article標籤皆然', function() {
+
+        //R14前之判準以「不含<article>」為豁免條件, 使真挑戰頁只要含該標籤即漏判。
+        //改以內容量為分野後, 兩種形狀的正常文章都放行, 而豁免不再與標籤有關
+        let body = '<p>this article explains captcha and challenge design in depth. </p>' +
+            '<p>' + 'it continues with enough sentences, commas and length that it reads as a genuine article body rather than boilerplate. '.repeat(5) + '</p>'
+        let r = [
+            inspectHtml('<html><head><title>x</title></head><body><article>' + body + '</article></body></html>').type,
+            inspectHtml('<html><head><title>x</title></head><body>' + body + '</body></html>').type,
+        ]
+        let rr = ['pass', 'pass']
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('含article且可見文字極少時仍判generic CAPTCHA', function() {
+
+        //鎖住R14之修正: <article>標籤不再是豁免條件, 否則真挑戰頁只要帶該標籤即漏判
+        let html = '<html><head><title>x</title></head><body><article><p>captcha challenge</p></article></body></html>'
+        let r = inspectHtml(html).type
+        let rr = 'captcha'
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('X與Twitter之錯誤頁判captcha', function() {
+        let r = [
+            '<html><head><title>x</title></head><body><p>something went wrong on x.com</p></body></html>',
+            '<html><head><title>x</title></head><body><p>something went wrong on twitter.com</p></body></html>',
+        ].map((h) => [inspectHtml(h).type, inspectHtml(h).message])
+        let rr = [['captcha', 'X/Twitter error page'], ['captcha', 'X/Twitter error page']]
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('Google News之c-wiz包裝頁判redirect', function() {
+        let html = '<html><head><title>x</title></head><body><c-wiz>from news.google.com</c-wiz><p>' + 'z'.repeat(300) + '</p></body></html>'
+        let t = inspectHtml(html)
+        let r = [t.pass, t.type, t.message]
+        let rr = [false, 'redirect', 'Google News wrapper']
         assert.strict.deepEqual(r, rr)
     })
 

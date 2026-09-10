@@ -23,6 +23,11 @@ import { getOptStr, getOptBool, getOptArr, getOptP0Int } from './getOpt.mjs'
  * 流程為fetch(委派)至inspectHtml(原始內容檢測)至Readability解析(可選)；
  * 對已知網站另有轉址提取、跳過特定方法之判識規則，且方法④會額外回傳snapshot欄位
  *
+ * **並行呼叫之限制**：方法④之Camofox server綁定固定埠（預設19377），同一埠號同時只能有一個抓取，
+ * 詳見fetchWebByCamofox之說明。auto模式可能升級至該階，故同時發動多個fetchWeb時，
+ * 若其中一個以上走到方法④即會互相破壞（先完成者殺掉server，其餘回'camofox-error'）。
+ * 需要並行時須為每個呼叫指定互不相同的opt.port；方法①②③則無此限制
+ *
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} [opt={}] 輸入設定物件，其餘鍵值會轉傳給實際執行抓取之函數，預設{}
  * @param {String} [opt.method='auto'] 輸入指定抓取方法字串，可為'auto'、'curl'、'playwright'、'playwright-headed'、'camofox'，'auto'代表自動階梯升級，預設'auto'

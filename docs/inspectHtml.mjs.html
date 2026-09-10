@@ -1,4 +1,51 @@
-import isestr from 'wsemi/src/isestr.mjs'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>inspectHtml.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">inspectHtml.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import isestr from 'wsemi/src/isestr.mjs'
 import isfun from 'wsemi/src/isfun.mjs'
 import estimateVisibleText from './estimateVisibleText.mjs'
 import { DETECT_PASS, DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMPTY } from './constants.mjs'
@@ -53,7 +100,7 @@ let CHALLENGE_TITLE_PREFIXES = ['just a moment', 'just a quick check', 'checking
 function _mkCtx(html) {
 
     let lower = html.toLowerCase()
-    let title = html.match(/<title>([^<]*)/i)?.[1]?.trim() || ''
+    let title = html.match(/&lt;title>([^&lt;]*)/i)?.[1]?.trim() || ''
     let visible = null
 
     return {
@@ -80,12 +127,12 @@ function _mkCtx(html) {
 //  semantic    依賴標題文字、內文文字或內容量。合成內容完整保留title與內文, 判準依然成立,
 //              且這是判識合成內容的唯一手段, 不可略過
 //
-//此欄取代了先前三處「不含<article>」的擋板。那個擋板是為了修合成側的誤判而加,
-//卻同時作用在原始側: 真挑戰頁只要含<article>標籤即被放行(實測漏判且parse成功),
+//此欄取代了先前三處「不含&lt;article>」的擋板。那個擋板是為了修合成側的誤判而加,
+//卻同時作用在原始側: 真挑戰頁只要含&lt;article>標籤即被放行(實測漏判且parse成功),
 //而它只掛在3個判識器上, 同類的其他判識器一個都沒有。
 //
 //擋板另有一個維度上的錯誤: 它想擋的是「談論反爬蟲的正常文章」, 但用的判準是
-//「有沒有<article>標籤」。正確的分野是**內容量**——真攔阻頁可見文字極少(實測約64字),
+//「有沒有&lt;article>標籤」。正確的分野是**內容量**——真攔阻頁可見文字極少(實測約64字),
 //正常文章則有整篇正文。故該三項改與其他弱判準一致, 一律搭配visible門檻(見各項)
 let DETECTORS = [
 
@@ -130,12 +177,12 @@ let DETECTORS = [
         //弱字串判準須搭配「幾乎無實質內容」之閘門, 否則談論反爬蟲的正常文章一律被誤殺
         //(本套件自身的測試fixture即為一例: 其內文寫「contains no captcha wording,
         //no challenge wording」而含有該二字)。真挑戰頁之可見文字極少, 此為兩者之分野。
-        //原以c.html.length < 50000為閘門, 但位元組數與「是否為挑戰頁」只是弱相關,
+        //原以c.html.length &lt; 50000為閘門, 但位元組數與「是否為挑戰頁」只是弱相關,
         //短的正常文章一樣落在閘門內
         type: DETECT_CAPTCHA,
         message: 'generic CAPTCHA',
         evidence: 'semantic',
-        test: (c) => c.lower.includes('captcha') && c.lower.includes('challenge'),
+        test: (c) => c.lower.includes('captcha') &amp;&amp; c.lower.includes('challenge'),
     },
     {
         type: DETECT_CAPTCHA,
@@ -165,13 +212,13 @@ let DETECTORS = [
         type: DETECT_CAPTCHA,
         message: 'access denied (WAF/CDN block)',
         evidence: 'semantic',
-        test: (c) => c.titleLower.startsWith('access denied') || (c.lower.includes('access denied') && c.lower.includes('edgesuite.net')),
+        test: (c) => c.titleLower.startsWith('access denied') || (c.lower.includes('access denied') &amp;&amp; c.lower.includes('edgesuite.net')),
     },
     {
         type: DETECT_CAPTCHA,
         message: 'X/Twitter error page',
         evidence: 'semantic',
-        test: (c) => c.lower.includes('something went wrong') && (c.lower.includes('x.com') || c.lower.includes('twitter.com')),
+        test: (c) => c.lower.includes('something went wrong') &amp;&amp; (c.lower.includes('x.com') || c.lower.includes('twitter.com')),
     },
 
     //驗證頁面
@@ -179,7 +226,7 @@ let DETECTORS = [
         type: DETECT_VERIFY,
         message: 'WeChat verification page',
         evidence: 'structural',
-        test: (c) => c.lower.includes('secitptpage') && c.lower.includes('wx.qq.com'),
+        test: (c) => c.lower.includes('secitptpage') &amp;&amp; c.lower.includes('wx.qq.com'),
     },
 
     //轉址包裝頁
@@ -191,13 +238,13 @@ let DETECTORS = [
         //比對的是HTML標籤結構而非內文字串: 正常文章即使談論meta refresh, 其範例碼亦已被轉義,
         //不會命中, 故不需內容量閘門
         anyContent: true,
-        test: (c) => (c.html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+url=["']?([^"'\s>]*)["']?/i)?.[1] || '').replace(/[\\'"\s]/g, '').length > 0,
+        test: (c) => (c.html.match(/&lt;meta[^>]+http-equiv=["']refresh["'][^>]+url=["']?([^"'\s>]*)["']?/i)?.[1] || '').replace(/[\\'"\s]/g, '').length > 0,
     },
     {
         type: DETECT_REDIRECT,
         message: 'Google News wrapper',
         evidence: 'structural',
-        test: (c) => c.lower.includes('c-wiz') && c.lower.includes('news.google.com'),
+        test: (c) => c.lower.includes('c-wiz') &amp;&amp; c.lower.includes('news.google.com'),
     },
 
     //轉址與載入interstitial殼頁: 標題含平台或載入關鍵字「且」頁面幾乎無實質內容, 才判定。
@@ -219,7 +266,7 @@ let DETECTORS = [
 
         //本身即為內容量判準, 再套閘門為同義反覆
         anyContent: true,
-        test: (c) => c.html.length > EMPTY_HTML_MIN_BYTES && c.visible.length < EMPTY_VISIBLE_MAX,
+        test: (c) => c.html.length > EMPTY_HTML_MIN_BYTES &amp;&amp; c.visible.length &lt; EMPTY_VISIBLE_MAX,
     },
 ]
 
@@ -243,10 +290,10 @@ let DETECTORS = [
  *
  * import inspectHtml from './src/inspectHtml.mjs'
  *
- * console.log(inspectHtml('<html><head><title>Just a moment</title></head><body></body></html>'))
+ * console.log(inspectHtml('&lt;html>&lt;head>&lt;title>Just a moment&lt;/title>&lt;/head>&lt;body>&lt;/body>&lt;/html>'))
  * // => { pass: false, type: 'captcha', message: 'Cloudflare/anti-bot challenge' }
  *
- * console.log(inspectHtml('<html><head><title>abc</title></head><body><p>' + 'x'.repeat(300) + '</p></body></html>'))
+ * console.log(inspectHtml('&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt;body>&lt;p>' + 'x'.repeat(300) + '&lt;/p>&lt;/body>&lt;/html>'))
  * // => { pass: true, type: 'pass', message: 'ok' }
  *
  */
@@ -263,7 +310,7 @@ function inspectHtml(html, opt = {}) {
     let c = _mkCtx(html)
 
     for (let d of DETECTORS) {
-        if (isSynth && d.evidence === 'structural') {
+        if (isSynth &amp;&amp; d.evidence === 'structural') {
             continue
         }
 
@@ -272,7 +319,7 @@ function inspectHtml(html, opt = {}) {
         //而攔阻頁與談論攔阻的文章之分野正是內容量。先前由各判識器自行決定要不要寫這個條件,
         //結果是17個判識器中只有5個有, 其餘同型者無——實測一篇1000字談反爬蟲的正常文章
         //會被human verification、server security block、PerimeterX三項誤判為攔阻頁
-        if (!d.anyContent && c.visible.length >= SPARSE_VISIBLE_MAX) {
+        if (!d.anyContent &amp;&amp; c.visible.length >= SPARSE_VISIBLE_MAX) {
             continue
         }
 
@@ -287,3 +334,28 @@ function inspectHtml(html, opt = {}) {
 
 export { EMPTY_VISIBLE_MAX }
 export default inspectHtml
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Thu Sep 10 2026 18:00:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

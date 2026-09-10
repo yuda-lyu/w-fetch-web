@@ -1,19 +1,18 @@
 import runPlaywright from './runPlaywright.mjs'
 import { METHOD_PW_HEADED as METHOD } from './constants.mjs'
+import { VERIFY_SELECTORS } from './challengeResources.mjs'
 import { getOptBool } from './getOpt.mjs'
 
 
 //預設值
+//
+//本值與無頭模式之3000不同, 該差異自初版即存在且未見記錄。
+//有頭模式另需等待驗證元件出現與人為點擊, 較長之等待有其道理, 但3000與5000這兩個
+//具體數字未經量測, 屬未經驗證之推測。調整前應先量測真實頁面之渲染完成時間
 let DEFAULT_POST_NAV_WAIT_MS = 5000
 
 
-//驗證iframe之選取器
-let VERIFY_SELECTORS = [
-    'iframe[src*="challenges.cloudflare.com"]',
-    'iframe[src*="/cdn-cgi/challenge-platform"]',
-    '.cf-turnstile iframe',
-    'iframe[src*="hcaptcha.com"]',
-]
+//驗證iframe之選取器, 其來源與判識器共用同一份挑戰特徵清單
 
 
 //模擬人類滑鼠軌跡, 隨機起點至中途點至目標, 並加隨機抖動與停頓

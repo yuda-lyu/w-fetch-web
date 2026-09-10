@@ -2,6 +2,11 @@ import estimateVisibleText from './estimateVisibleText.mjs'
 
 
 //可見文字低於此字數才啟動Shadow DOM穿透
+//
+//本值與inspectHtml.mjs之EMPTY_VISIBLE_MAX**必須相同**: 後者決定「低於多少判為空內容」。
+//兩者一致時, 會被判空的頁面正好就是會啟動穿透的頁面; 不一致即開縫,
+//出現「判空但不穿透」(升級後仍空, 白費一階)或「穿透了卻仍被判空」之頁面。
+//此約束由 unit-inspectHtml 之「兩處門檻須一致」鎖住
 let SHADOW_VISIBLE_THRESHOLD = 200
 
 //Shadow DOM取得之文字低於此字數視為無效, 仍回傳原HTML
@@ -92,4 +97,5 @@ async function extractPageContent(page) {
 }
 
 
+export { SHADOW_VISIBLE_THRESHOLD }
 export default extractPageContent

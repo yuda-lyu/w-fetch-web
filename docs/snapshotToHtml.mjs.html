@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>extractPageContent.mjs - Documentation</title>
+    <title>snapshotToHtml.mjs - Documentation</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -35,7 +35,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">extractPageContent.mjs</h1>
+    <h1 class="page-title">snapshotToHtml.mjs</h1>
     
 
     
@@ -45,107 +45,142 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>import estimateVisibleText from './estimateVisibleText.mjs'
-
-
-//可見文字低於此字數才啟動Shadow DOM穿透
-//
-//本值與inspectHtml.mjs之EMPTY_VISIBLE_MAX**必須相同**: 後者決定「低於多少判為空內容」。
-//兩者一致時, 會被判空的頁面正好就是會啟動穿透的頁面; 不一致即開縫,
-//出現「判空但不穿透」(升級後仍空, 白費一階)或「穿透了卻仍被判空」之頁面。
-//此約束由 unit-inspectHtml 之「兩處門檻須一致」鎖住
-let SHADOW_VISIBLE_THRESHOLD = 200
-
-//Shadow DOM取得之文字低於此字數視為無效, 仍回傳原HTML
-let SHADOW_MIN_CHARS = 50
-
-
-//轉義HTML特殊字元
-function _esc(s) {
-    return String(s).replace(/[&lt;>&amp;]/g, (c) => ({ '&lt;': '&amp;lt;', '>': '&amp;gt;', '&amp;': '&amp;amp;' }[c]))
-}
+            <pre class="prettyprint source linenums"><code>import isstr from 'wsemi/src/isstr.mjs'
 
 
 /**
- * 由Playwright之page提取網頁HTML，可見文字過少時穿透Shadow DOM
+ * 將Camofox之accessibility snapshot轉換為簡易HTML
  *
- * 先取page.content()，若估算可見文字已達門檻則直接回傳；否則遞迴穿透Shadow DOM取得
- * 各層innerText，再依換行切段重組為含article之簡易HTML，供Readability解析。
+ * 保留heading、paragraph、listitem、strong、emphasis、text、img等語意元素，跳過button、
+ * banner、navigation等結構容器標記
  *
- * 回傳一併標明內容形態：合成內容之標籤結構已被剝除，其可信的判識證據與原始文件不同，
- * 故由本函數（唯一知道走了哪個出口者）標明，而非由下游猜測
- *
- * @param {Object} page 輸入Playwright之page物件
- * @returns {Promise} 回傳Promise，resolve回傳{html,contentKind}物件，contentKind為'raw'或'synthesized'
+ * @param {String} snapshot 輸入accessibility snapshot字串
+ * @param {String} [pageTitle=''] 輸入頁面標題字串，預設''
+ * @returns {String} 回傳簡易HTML字串
  * @example
  *
- * import { chromium } from 'playwright'
- * import extractPageContent from './src/extractPageContent.mjs'
+ * import snapshotToHtml from './src/snapshotToHtml.mjs'
  *
- * let test = async () => {
- *
- *     let browser = await chromium.launch({ headless: true, channel: 'chrome' })
- *     let page = await browser.newPage()
- *     await page.goto('https://example.com/')
- *     let { html, contentKind } = await extractPageContent(page)
- *     console.log(html.length, contentKind)
- *     // => 234 'raw'
- *     await browser.close()
- *
- * }
- * await test()
- *     .catch((err) => {
- *         console.log(err)
- *     })
+ * console.log(snapshotToHtml('- heading "abc" [level=1]\n- paragraph: def', 'abc'))
+ * // => '&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt;body>&lt;article>&lt;h1>abc&lt;/h1>\n&lt;h1>abc&lt;/h1>\n&lt;p>def&lt;/p>&lt;/article>&lt;/body>&lt;/html>'
  *
  */
-async function extractPageContent(page) {
+function snapshotToHtml(snapshot, pageTitle = '') {
 
-    let html = await page.content()
-    let visible = estimateVisibleText(html)
-    if (visible.length >= SHADOW_VISIBLE_THRESHOLD) {
-        return { html, contentKind: 'raw' }
+    //check
+    if (!isstr(snapshot)) {
+        snapshot = ''
+    }
+    if (!isstr(pageTitle)) {
+        pageTitle = ''
     }
 
-    //穿透Shadow DOM
-    let shadow = await page.evaluate(() => {
-        function getDeepInnerText(el) {
-            if (!el) {
-                return ''
-            }
-            let text = ''
-            if (el.shadowRoot) {
-                for (let child of el.shadowRoot.children) {
-                    text += getDeepInnerText(child)
-                }
-                return text
-            }
-            if (el.children &amp;&amp; el.children.length > 0) {
-                for (let child of el.children) {
-                    text += getDeepInnerText(child)
-                }
-                return text
-            }
-            return el.innerText || ''
+    let esc = (s) => s.replace(/&amp;/g, '&amp;amp;').replace(/&lt;/g, '&amp;lt;').replace(/>/g, '&amp;gt;')
+    let lines = snapshot.split('\n')
+    let htmlParts = []
+
+    for (let line of lines) {
+
+        let trimmed = line.replace(/^ *- */, '').trim()
+        if (!trimmed) {
+            continue
         }
-        return getDeepInnerText(document.body || document.documentElement)
-    })
 
-    if (!shadow || shadow.length &lt; SHADOW_MIN_CHARS) {
-        return { html, contentKind: 'raw' }
+        //heading "..." [level=N]
+        let headingMatch = trimmed.match(/^(?:')?heading\s+"(.+?)"\s*\[level=(\d)\]/)
+        if (headingMatch) {
+            let lvl = headingMatch[2]
+            htmlParts.push(`&lt;h${lvl}>${esc(headingMatch[1])}&lt;/h${lvl}>`)
+            continue
+        }
+
+        //link與/url:皆跳過, 內容由子行處理
+        if (/^(?:')?link\s+"/.test(trimmed)) {
+            continue
+        }
+        if (/^\/url:\s+/.test(trimmed)) {
+            continue
+        }
+
+        //img "alt"
+        let imgMatch = trimmed.match(/^img\s+"(.+?)"/)
+        if (imgMatch) {
+            htmlParts.push(`&lt;img alt="${esc(imgMatch[1])}">`)
+            continue
+        }
+
+        //paragraph與paragraph: text
+        let paraMatch = trimmed.match(/^paragraph(?::\s*(.+))?$/)
+        if (paraMatch) {
+            if (paraMatch[1]) {
+                htmlParts.push(`&lt;p>${esc(paraMatch[1])}&lt;/p>`)
+            }
+            continue
+        }
+
+        //listitem與listitem: text
+        let liMatch = trimmed.match(/^listitem(?::\s*(.+))?$/)
+        if (liMatch) {
+            if (liMatch[1]) {
+                htmlParts.push(`&lt;li>${esc(liMatch[1])}&lt;/li>`)
+            }
+            continue
+        }
+
+        //strong: text
+        let strongMatch = trimmed.match(/^strong:\s*"?(.+?)"?\s*$/)
+        if (strongMatch) {
+            htmlParts.push(`&lt;strong>${esc(strongMatch[1])}&lt;/strong>`)
+            continue
+        }
+
+        //emphasis: text
+        let emMatch = trimmed.match(/^emphasis:\s*"?(.+?)"?\s*$/)
+        if (emMatch) {
+            htmlParts.push(`&lt;em>${esc(emMatch[1])}&lt;/em>`)
+            continue
+        }
+
+        //text: "..."
+        let textMatch = trimmed.match(/^text:\s*"?(.+?)"?\s*$/)
+        if (textMatch) {
+            htmlParts.push(`&lt;span>${esc(textMatch[1])}&lt;/span>`)
+            continue
+        }
+
+        //option "..." (微信附註)
+        let optionMatch = trimmed.match(/^(?:')?option\s+"(.+?)"/)
+        if (optionMatch) {
+            htmlParts.push(`&lt;p>${esc(optionMatch[1])}&lt;/p>`)
+            continue
+        }
+
+        //結構與容器標記皆跳過
+        if (/^(button|banner|navigation|main|contentinfo|complementary|list)\b/.test(trimmed)) {
+            continue
+        }
+
+        //純文字行
+        let plainText = trimmed.replace(/\[e\d+\]/g, '').replace(/^['"]|['"]$/g, '').trim()
+        if (
+            plainText.length > 0 &amp;&amp;
+            !/^(link|img|heading|paragraph|listitem|strong|emphasis|text|option|button|banner|navigation|main|contentinfo|complementary|list)\b/.test(plainText)
+        ) {
+            htmlParts.push(`&lt;p>${esc(plainText)}&lt;/p>`)
+        }
     }
 
-    //由Shadow DOM內文重組為簡易HTML
-    let title = await page.title().catch(() => '')
-    let titleEsc = _esc(title || '')
-    let bodyEsc = _esc(shadow)
-    let synth = `&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;title>${titleEsc}&lt;/title>&lt;/head>&lt;body>&lt;article>${bodyEsc.split(/\n+/).map((p) => `&lt;p>${p}&lt;/p>`).join('\n')}&lt;/article>&lt;/body>&lt;/html>`
-    return { html: synth, contentKind: 'synthesized' }
+    let titleEsc = esc(pageTitle)
+    return (
+        '&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;title>' + titleEsc + '&lt;/title>&lt;/head>' +
+        '&lt;body>&lt;article>&lt;h1>' + titleEsc + '&lt;/h1>\n' +
+        htmlParts.join('\n') +
+        '&lt;/article>&lt;/body>&lt;/html>'
+    )
 }
 
 
-export { SHADOW_VISIBLE_THRESHOLD }
-export default extractPageContent
+export default snapshotToHtml
 </code></pre>
         </article>
     </section>

@@ -37,9 +37,16 @@ let SNAPSHOT_MIN_CHARS = 50
  * 失敗歸因分三種：'camofox-not-found'為未安裝、'camofox-empty'為頁面確實無足量內容（重試無益）、
  * 'camofox-error'為server啟動失敗、tab建立失敗或snapshot傳輸失敗（可重試）
  *
+ * **同一埠號同時只能有一個抓取在進行，本函數不可並行呼叫。**
+ * Camofox server綁定固定埠（預設19377），且就緒探測只確認該埠有服務回應、不驗證是否為自己啟動者。
+ * 故並行呼叫時：後啟動者因埠被占用而啟動失敗，卻會探到前者的server而誤認就緒並借用之；
+ * 待任一方先完成，其清理程序會殺掉該server，另一方隨即全數失敗（回'camofox-error'）。
+ * 需要並行時，**必須為每個同時進行的呼叫指定互不相同的opt.port**。
+ * 此限制同樣適用於auto模式的fetchWeb——其階梯末階即為本函數。
+ *
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
- * @param {Integer} [opt.port=19377] 輸入Camofox server監聽埠號整數，預設19377
+ * @param {Integer} [opt.port=19377] 輸入Camofox server監聽埠號整數，預設19377。並行呼叫時每個呼叫須給不同埠號
  * @param {Integer} [opt.serverStartTimeoutMs=30000] 輸入等待Camofox server啟動最長毫秒整數，預設30000
  * @param {Integer} [opt.snapshotRetries=3] 輸入snapshot內容不足時之重取次數整數，預設3
  * @param {Integer} [opt.snapshotWaitMs=5000] 輸入snapshot重取間隔毫秒整數，預設5000

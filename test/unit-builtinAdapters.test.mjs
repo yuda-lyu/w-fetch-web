@@ -46,21 +46,79 @@ describe('內建站台adapter', function() {
             assert.strict.deepEqual(r, rr)
         })
 
-        //已知缺陷, 待業主裁示後再修:
-        //解析regex為 <field>:\{[\s\S]*?(?:,|\{)content:"..."，要求content之前緊鄰逗號或左大括號。
-        //當content是該物件的「首個鍵」時, 開頭的左大括號已被 :\{ 消耗, 惰性比對遂跨越物件邊界,
-        //抓到後面另一個欄位的content。實測: dtbDetail:{content:"DDD"},articleDetail:{content:"AAA"}
-        //會回傳 "AAA"。後果為靜默取到錯誤欄位之內文, 不會報錯。
-        //未逕行修正之因: 無法取得真實gelonghui頁面驗證其state結構,
-        //收緊regex(如限制中間不得含大括號)可能反而使真實頁面解析失敗。
-        it.skip('[已知缺陷]content為首個鍵時, 不應跨物件抓到其他欄位之內容', function() {
+        it('content為首個鍵時, 不跨物件抓到其他欄位之內容', function() {
+
+            //舊實作以單一regex「<field>:\{[\s\S]*?(?:,|\{)content:"...」直接找content,
+            //當content是該物件首個鍵時, 開頭的左大括號已被 :\{ 消耗, 惰性比對遂跨越物件邊界
+            //而抓到後面另一個欄位的內文, 且靜默成功不報錯(此處會取到"AAA")。
+            //改以大括號配對切出物件範圍後再找, 邊界與鍵的順序無關
             let html = '<html><head><title>t - 格隆匯</title></head><body><script>window.__NUXT__={state:{' +
                 'dtbDetail:{content:"' + 'D'.repeat(60) + '"},' +
                 'articleDetail:{content:"' + 'A'.repeat(60) + '"}' +
                 '}}</script></body></html>'
             let t = parseGelonghui(html, URL_G)
-            let r = t.content[0]
-            let rr = 'D'
+            let r = [t.success, t.content[0], t.contentLength]
+            let rr = [true, 'D', 60]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('欄位物件含巢狀物件時仍能取出content', function() {
+
+            //真實頁面之articleDetail確實含巢狀物件(實測含 tag:{name,color}),
+            //故不可用「中間不得含大括號」來收緊比對——那會使真實頁面直接解析不到
+            let html = '<html><head><title>t - 格隆匯</title></head><body><script>window.__NUXT__={state:{' +
+                'articleDetail:{id:1,tag:{name:"原创",color:"#999999"},content:"' + 'N'.repeat(60) + '"}' +
+                '}}</script></body></html>'
+            let t = parseGelonghui(html, URL_G)
+            let r = [t.success, t.content[0]]
+            let rr = [true, 'N']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('欄位存在但其物件內無content時, 續試下一個欄位', function() {
+
+            //dtbDetail存在卻只有其他鍵; 舊實作因regex找不到而整段不匹配, 效果相同,
+            //但新實作是「切出物件後於其內找不到content」, 為不同的路徑
+            let html = '<html><head><title>t - 格隆匯</title></head><body><script>window.__NUXT__={state:{' +
+                'dtbDetail:{id:1,title:"x"},' +
+                'articleDetail:{id:2,content:"' + 'A'.repeat(60) + '"}' +
+                '}}</script></body></html>'
+            let t = parseGelonghui(html, URL_G)
+            let r = [t.success, t.content[0], t.contentLength]
+            let rr = [true, 'A', 60]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('兩個欄位皆無content時回adapter-parse-miss', function() {
+            let html = '<html><head><title>t - 格隆匯</title></head><body><script>window.__NUXT__={state:{' +
+                'dtbDetail:{id:1},articleDetail:{id:2}' +
+                '}}</script></body></html>'
+            let t = parseGelonghui(html, URL_G)
+            let r = [t.success, t.reason]
+            let rr = [false, 'adapter-parse-miss']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('大括號未配對完成時視為找不到, 不拋錯', function() {
+            let html = '<html><head><title>t - 格隆匯</title></head><body><script>window.__NUXT__={state:{' +
+                'articleDetail:{id:1,content:"' + 'N'.repeat(60) + '"' +
+                '</script></body></html>'
+            let t = parseGelonghui(html, URL_G)
+            let r = [t.success, t.reason]
+            let rr = [false, 'adapter-parse-miss']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('字串內之大括號不影響邊界判定', function() {
+
+            //內文本身可能含大括號(程式碼片段、JSON範例), 掃描時字串內容不計入配對
+            let html = '<html><head><title>t - 格隆匯</title></head><body><script>window.__NUXT__={state:{' +
+                'dtbDetail:{id:1,content:"' + '{程式碼}'.repeat(20) + '"},' +
+                'articleDetail:{content:"' + 'A'.repeat(60) + '"}' +
+                '}}</script></body></html>'
+            let t = parseGelonghui(html, URL_G)
+            let r = [t.success, t.content.includes('程式碼'), t.content.includes('A'.repeat(60))]
+            let rr = [true, true, false]
             assert.strict.deepEqual(r, rr)
         })
 
@@ -99,11 +157,11 @@ describe('內建站台adapter', function() {
             assert.strict.deepEqual(r, rr)
         })
 
-        it('找不到任何欄位時回custom-parser-miss', function() {
+        it('找不到任何欄位時回adapter-parse-miss', function() {
             let html = '<html><head><title>t - 格隆匯</title></head><body><p>沒有NUXT state</p></body></html>'
             let t = parseGelonghui(html, URL_G)
             let r = [t.success, t.reason, includes(t.message, 'gelonghui')]
-            let rr = [false, 'custom-parser-miss', true]
+            let rr = [false, 'adapter-parse-miss', true]
             assert.strict.deepEqual(r, rr)
         })
 
@@ -155,23 +213,23 @@ describe('內建站台adapter', function() {
             assert.strict.deepEqual(r, rr)
         })
 
-        it('無__NEXT_DATA__時回custom-parser-miss', function() {
+        it('無__NEXT_DATA__時回adapter-parse-miss', function() {
             let html = '<html><head><title>t</title></head><body><p>沒有next data</p></body></html>'
             let t = parseBloomberg(html, URL_B)
             let r = [t.success, t.reason, includes(t.message, 'no __NEXT_DATA__')]
-            let rr = [false, 'custom-parser-miss', true]
+            let rr = [false, 'adapter-parse-miss', true]
             assert.strict.deepEqual(r, rr)
         })
 
-        it('__NEXT_DATA__非合法JSON時回custom-parser-miss且不拋錯', function() {
+        it('__NEXT_DATA__非合法JSON時回adapter-parse-miss且不拋錯', function() {
             let html = '<html><body><script id="__NEXT_DATA__" type="application/json">{壞掉的JSON</script></body></html>'
             let t = parseBloomberg(html, URL_B)
             let r = [t.success, t.reason, includes(t.message, 'JSON parse failed')]
-            let rr = [false, 'custom-parser-miss', true]
+            let rr = [false, 'adapter-parse-miss', true]
             assert.strict.deepEqual(r, rr)
         })
 
-        it('story結構缺漏或content非陣列時回custom-parser-miss', function() {
+        it('story結構缺漏或content非陣列時回adapter-parse-miss', function() {
             let r = []
             for (let story of [
                 undefined,
@@ -184,11 +242,11 @@ describe('內建站台adapter', function() {
                 r.push([t.success, t.reason])
             }
             let rr = [
-                [false, 'custom-parser-miss'],
-                [false, 'custom-parser-miss'],
-                [false, 'custom-parser-miss'],
-                [false, 'custom-parser-miss'],
-                [false, 'custom-parser-miss'],
+                [false, 'adapter-parse-miss'],
+                [false, 'adapter-parse-miss'],
+                [false, 'adapter-parse-miss'],
+                [false, 'adapter-parse-miss'],
+                [false, 'adapter-parse-miss'],
             ]
             assert.strict.deepEqual(r, rr)
         })

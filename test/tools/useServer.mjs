@@ -42,6 +42,7 @@ function useServer() {
     return {
         url: (pathname) => _svr.url(pathname),
         nCount500: () => _svr.nCount500(),
+        lastHeaders: (pathname) => _svr.lastHeaders(pathname),
         get port() {
             return _svr?.port
         },

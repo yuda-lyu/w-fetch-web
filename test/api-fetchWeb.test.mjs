@@ -162,7 +162,7 @@ describe('fetchWeb', function() {
 
         it('adapter回傳success:false時視為解析失敗', async function() {
             let adapters = [mkAdapter(() => {
-                return { success: false, reason: 'custom-parser-miss', message: 'no content found' }
+                return { success: false, reason: 'my-adapter-no-data', message: 'no content found' }
             })]
             let t = await fetchWeb(svr.url('/article'), { ...optBase, adapters })
             let r = [t.status, t.message, t.attempts[0].status, t.attempts[0].type]

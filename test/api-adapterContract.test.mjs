@@ -100,7 +100,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
                 parse: (html) => {
                     let m = html.match(/__NEXT_DATA__[^>]*>(.*?)<\/script>/)
                     if (!m) {
-                        return { success: false, reason: 'custom-parser-miss', message: 'no __NEXT_DATA__' }
+                        return { success: false, reason: 'my-adapter-no-data', message: 'no __NEXT_DATA__' }
                     }
                     return { success: true, title: 'NEXT', content: JSON.parse(m[1]).body }
                 },
@@ -220,7 +220,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
 
         it('success為true或false時正常分流', async function() {
             let tT = await fetchWeb(svr.url('/article'), { ...optBase, adapters: mk(() => ({ success: true, title: 't', content: contentOk })) })
-            let tF = await fetchWeb(svr.url('/article'), { ...optBase, adapters: mk(() => ({ success: false, reason: 'custom-parser-miss', message: 'm' })) })
+            let tF = await fetchWeb(svr.url('/article'), { ...optBase, adapters: mk(() => ({ success: false, reason: 'my-adapter-no-data', message: 'm' })) })
             let r = [tT.status, tF.status]
             let rr = ['success', 'error']
             assert.strict.deepEqual(r, rr)
@@ -231,10 +231,10 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
     describe('R06 失敗原因須可辨識', function() {
 
         it('adapter自述之reason保留至頂層與attempts', async function() {
-            let adapters = mk(() => ({ success: false, reason: 'custom-parser-miss', message: 'no state found' }))
+            let adapters = mk(() => ({ success: false, reason: 'my-adapter-no-data', message: 'no state found' }))
             let t = await fetchWeb(svr.url('/article'), { ...optBase, adapters })
             let r = [t.status, t.reason, t.message, t.attempts[0].reason]
-            let rr = ['error', 'custom-parser-miss', 'no state found', 'custom-parser-miss']
+            let rr = ['error', 'my-adapter-no-data', 'no state found', 'my-adapter-no-data']
             assert.strict.deepEqual(r, rr)
         })
 

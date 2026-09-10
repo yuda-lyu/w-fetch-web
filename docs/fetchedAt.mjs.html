@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>getRetryWaitMs.mjs - Documentation</title>
+    <title>fetchedAt.mjs - Documentation</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -35,7 +35,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">getRetryWaitMs.mjs</h1>
+    <h1 class="page-title">fetchedAt.mjs</h1>
     
 
     
@@ -45,48 +45,68 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>import ispint from 'wsemi/src/ispint.mjs'
-
-
-//重試政策: 本模組為其單一擁有者
-//預設重試次數(含初始共執行DEFAULT_MAX_RETRIES+1次)
-let DEFAULT_MAX_RETRIES = 5
-
-//線性退避之初始與上限毫秒
-let INITIAL_WAIT_MS = 3000
-let MAX_WAIT_MS = 15000
+            <pre class="prettyprint source linenums"><code>//時間戳之單一擁有者
+//
+//本套件對外存在**兩種**fetchedAt, 分屬兩個不同的對外表面, 兩者永不同時出現:
+//
+//  來源            格式                        取值時機            出現於
+//  fetchedAtIso    ISO 8601 UTC                進入函數時(重試前)   直接呼叫fetchWebByXxx之結果
+//  fetchedAtLocal  本地時間'YYYY-MM-DD HH:mm:ss' 彙整結果時(重試後)   fetchWeb之結果
+//
+//兩者不只格式不同, 語意亦不同: 前者是「開始嘗試的時間」, 後者是「完成的時間」,
+//重試5次時可相差45秒以上。
+//
+//之所以能長期分歧而無人察覺, 是因為finalizeResult.mjs之adapt()白名單投影
+//({success,html,method,snapshot})會丟棄fetchedAt, 使兩者從不同時出現在同一個結果裡。
+//故統一任一邊都是對該表面的破壞性變更, 須另行決定, 不在本模組職權內。
+//本模組的職責只有一個: 使這兩個決定各自只有一處實作
 
 
 /**
- * 取得重試前之線性退避等待毫秒
+ * 取得ISO 8601 UTC格式時間戳
  *
- * 第n次失敗後等待n*3000毫秒，上限15000毫秒，即3000、6000、9000、12000、15000、15000...
+ * 供四個fetchWebByXxx使用，於進入函數時取值，代表「開始嘗試」的時間
  *
- * @param {Integer} attempt 輸入第幾次嘗試之正整數，由1起算
- * @returns {Integer} 回傳等待毫秒整數
+ * @returns {String} 回傳ISO 8601 UTC格式時間字串
  * @example
  *
- * import getRetryWaitMs from './src/getRetryWaitMs.mjs'
+ * import { fetchedAtIso } from './src/fetchedAt.mjs'
  *
- * console.log(getRetryWaitMs(1), getRetryWaitMs(2), getRetryWaitMs(5), getRetryWaitMs(99))
- * // => 3000 6000 15000 15000
+ * console.log(fetchedAtIso())
+ * // => '2026-09-09T08:00:00.000Z'
  *
  */
-function getRetryWaitMs(attempt) {
-
-    //check
-    //attempt由1起算, 0不在契約內。此處須用ispint而非isp0int——
-    //isp0int允許0會使getRetryWaitMs(0)回0, 若日後共用retry runner採零起算即成熱迴圈
-    if (!ispint(attempt)) {
-        return INITIAL_WAIT_MS
-    }
-
-    return Math.min(INITIAL_WAIT_MS * attempt, MAX_WAIT_MS)
+function fetchedAtIso() {
+    return new Date().toISOString()
 }
 
 
-export { DEFAULT_MAX_RETRIES }
-export default getRetryWaitMs
+/**
+ * 取得本地時間格式時間戳
+ *
+ * 供fetchWeb之finalize使用，於彙整結果時取值，代表「完成」的時間
+ *
+ * @returns {String} 回傳'YYYY-MM-DD HH:mm:ss'格式之本地時間字串
+ * @example
+ *
+ * import { fetchedAtLocal } from './src/fetchedAt.mjs'
+ *
+ * console.log(fetchedAtLocal())
+ * // => '2026-09-09 16:00:00'
+ *
+ */
+function fetchedAtLocal() {
+    let d = new Date()
+    let pad = (n) => String(n).padStart(2, '0')
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+        ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
+}
+
+
+export {
+    fetchedAtIso,
+    fetchedAtLocal
+}
 </code></pre>
         </article>
     </section>

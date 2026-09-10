@@ -3,6 +3,10 @@ import { METHOD_PW_HEADLESS as METHOD } from './constants.mjs'
 
 
 //預設值
+//
+//本值與有頭模式之5000不同, 該差異自初版即存在且未見記錄。
+//有頭模式另需等待驗證元件出現與人為點擊, 較長之等待有其道理, 但3000與5000這兩個
+//具體數字未經量測, 屬未經驗證之推測。調整前應先量測真實頁面之渲染完成時間
 let DEFAULT_POST_NAV_WAIT_MS = 3000
 
 

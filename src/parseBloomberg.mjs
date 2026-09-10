@@ -26,7 +26,7 @@ function parseBloomberg(html, url) {
 
     let m = html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/)
     if (!m) {
-        return { success: false, reason: 'custom-parser-miss', message: 'bloomberg: no __NEXT_DATA__' }
+        return { success: false, reason: 'adapter-parse-miss', message: 'bloomberg: no __NEXT_DATA__' }
     }
 
     let data
@@ -34,13 +34,13 @@ function parseBloomberg(html, url) {
         data = JSON.parse(m[1])
     }
     catch {
-        return { success: false, reason: 'custom-parser-miss', message: 'bloomberg: __NEXT_DATA__ JSON parse failed' }
+        return { success: false, reason: 'adapter-parse-miss', message: 'bloomberg: __NEXT_DATA__ JSON parse failed' }
     }
 
     let story = data?.props?.pageProps?.story
     let blocks = story?.body?.content
     if (!Array.isArray(blocks) || blocks.length === 0) {
-        return { success: false, reason: 'custom-parser-miss', message: 'bloomberg: no story.body.content' }
+        return { success: false, reason: 'adapter-parse-miss', message: 'bloomberg: no story.body.content' }
     }
 
     let SKIP = new Set(['ad', 'inline-newsletter', 'inline-recirc', 'media', 'image', 'video', 'blockquote-instagram'])
