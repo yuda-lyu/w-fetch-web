@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>runPlan.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">runPlan.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import isobj from 'wsemi/src/isobj.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
+import inspectHtml from './inspectHtml.mjs'
+import parseArticle from './parseArticle.mjs'
+import { adapt, summarizeFail, finalize } from './finalizeResult.mjs'
+import { DETECT_EMPTY, DETECT_REDIRECT, PASS_INSPECTION } from './constants.mjs'
+import fetchWebByCurl from './fetchWebByCurl.mjs'
+import fetchWebByPlaywrightHeadless from './fetchWebByPlaywrightHeadless.mjs'
+import fetchWebByPlaywrightHead from './fetchWebByPlaywrightHead.mjs'
+import fetchWebByCamofox from './fetchWebByCamofox.mjs'
+
+
+//抓取器註冊表, 以step.key為索引
+//
+//本套件的四種抓取方法在不同層各有一套稱呼, 此處是它們唯一的交會點:
+//  step.key      計畫內部之階代號(buildPlan.STEPS)
+//  fetcherKey    opt._fetchers之鍵名, 為對外文件化之測試接縫, 改名即破壞既有測試與呼叫端
+//  fn            實際抓取函數
+//新增第五種抓取方法時, 此表與buildPlan.STEPS各加一列即可, 不需再改其他地方
+let FETCHER_BY_KEY = Object.freeze({
+    curl: { fetcherKey: 'curl', fn: fetchWebByCurl },
+    headless: { fetcherKey: 'playwrightHeadless', fn: fetchWebByPlaywrightHeadless },
+    headed: { fetcherKey: 'playwrightHead', fn: fetchWebByPlaywrightHead },
+    camofox: { fetcherKey: 'camofox', fn: fetchWebByCamofox },
+})
+
+
+//測試接縫: 允許以opt._fetchers置換個別抓取函數
+//階梯升級須走完四階才能驗證, 真跑等於每條測試啟動Chrome兩次加camofox一次, 且有頭模式會彈實體視窗,
+//無法作為常規測試; 故開此接縫供測試以假抓取函數精確驅動各升級情境。
+//底線前綴表示內部用途, 未傳時一律使用真實抓取函數, 生產環境不應傳入
+function _fetcherOf(opt, fetcherKey, real) {
+    let fs = opt?._fetchers
+    if (isobj(fs) &amp;&amp; isfun(fs[fetcherKey])) {
+        return fs[fetcherKey]
+    }
+    return real
+}
+
+
+//執行單一階之抓取, 含結構適配
+//是否帶入轉址旗標由step.redirectAware決定, 該欄位於buildPlan定義, 此處不另判斷階別——
+//先前由「_FETCH_BY_KEY之各條目要不要接第三參數」表達同一件事, 等於同一事實編碼於兩處
+async function _runFetcher(step, url, opt, redirect) {
+    let e = FETCHER_BY_KEY[step.key]
+    let fn = _fetcherOf(opt, e.fetcherKey, e.fn)
+    let optUse = step.redirectAware ? { ...opt, waitForRedirect: redirect } : opt
+    return adapt(await fn(url, optUse))
+}
+
+
+//依parse決定是否解析文章
+//僅於抓取成功時呼叫, 故不再重複檢核r.success
+async function _applyParse(r, url, parse, adapters) {
+    if (!parse) {
+        return r
+    }
+    let parsed = await parseArticle(r.html, url, adapters)
+    if (!parsed.success) {
+        return parsed
+    }
+    let out = { ...parsed, method: r.method }
+    if (r.snapshot) {
+        out.snapshot = r.snapshot
+    }
+    return out
+}
+
+
+/**
+ * 依序執行計畫中各階，首個取得可用內容者勝出
+ *
+ * 轉址旗標之後續變化由本函數擁有：某階被判為轉址包裝頁時，後續之Playwright階改以等待轉址方式抓取
+ *
+ * @param {String} url 輸入待抓取網址字串
+ * @param {Object} opt 輸入設定物件
+ * @param {Boolean} parse 輸入是否解析文章布林值
+ * @param {Boolean} showLog 輸入是否顯示過程訊息布林值
+ * @param {Array} adapters 輸入站台adapter陣列
+ * @param {Array} plan 輸入step描述陣列，由buildPlan產生
+ * @param {Boolean} redirect 輸入轉址旗標初值
+ * @returns {Promise} 回傳Promise，resolve回傳對外之結果物件，本函數不會reject
+ */
+//依序執行計畫中各階, 首個取得可用內容者勝出; 全數未果則彙整attempts回error
+async function runPlan(url, opt, parse, showLog, adapters, plan, redirect) {
+
+    let attempts = []
+
+    for (let step of plan) {
+
+        let tag = step.label + (redirect &amp;&amp; step.redirectAware ? ' (redirect)' : '')
+        if (showLog) {
+            console.log('[fetchWeb] trying ' + tag + ' ...')
+        }
+
+        let r = await _runFetcher(step, url, opt, redirect)
+        let method = r.method || step.method
+
+        //抓取失敗
+        if (!r.success) {
+            attempts.push({ method, ...summarizeFail(r) })
+            if (showLog) {
+                console.warn('[fetchWeb] ' + tag + ' failed: ' + r.message)
+            }
+            continue
+        }
+
+        //內容判識
+        //合成內容(Shadow DOM穿透或accessibility snapshot)之標籤結構已被剝除,
+        //故以contentKind告知判識器只比對semantic類判準, 詳見inspectHtml之DETECTORS註解
+        let inspection = step.inspect ? inspectHtml(r.html, { contentKind: r.contentKind }) : PASS_INSPECTION
+        if (!inspection.pass) {
+            //reason與type同值並非冗餘: status為'blocked'的紀錄有兩種來源(判識與解析失敗),
+            //兩者形狀須一致, 呼叫端才能一律讀reason取得失敗歸因而不必先分辨是哪一種。
+            //先前判識這一路不帶reason, 與JSDoc及README所宣稱者不符
+            attempts.push({ method, status: 'blocked', type: inspection.type, reason: inspection.type, message: inspection.message })
+            if (showLog) {
+                console.warn('[fetchWeb] ' + tag + ' blocked: ' + inspection.message)
+            }
+
+            //判為轉址包裝頁者, 後續之Playwright階改以等待轉址方式抓取
+            if (inspection.type === DETECT_REDIRECT) {
+                redirect = true
+            }
+            continue
+        }
+
+        //解析
+        let parsed = await _applyParse(r, url, parse, adapters)
+        if (parsed.success) {
+            //此處記的是抓取器取回之原始HTML長度, 與頂層contentLength(解析後之正文長度)不同,
+            //故另名htmlLength, 避免同名不同義
+            attempts.push({ method, status: 'success', htmlLength: r.html.length })
+            return finalize(url, parsed, attempts)
+        }
+
+        //解析失敗(SPA與JS渲染頁面)視為empty, 續下一階
+        attempts.push({ method, status: 'blocked', type: DETECT_EMPTY, reason: parsed.reason, message: parsed.message || 'parse failed' })
+        if (showLog) {
+            console.warn('[fetchWeb] ' + tag + ' parse failed: ' + (parsed.message || 'empty content') + ' — escalating')
+        }
+    }
+
+    //計畫內各階皆未取得可用內容
+    let last = attempts[attempts.length - 1]
+    return finalize(url, {
+        success: false,
+        reason: last?.reason || last?.type || 'unknown',
+        message: last?.message || 'all methods exhausted',
+    }, attempts)
+}
+
+
+export default runPlan
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Thu Sep 10 2026 18:00:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

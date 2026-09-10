@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
     
 </nav>
 
@@ -200,6 +200,392 @@
 
     
         <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="adapt"><span class="type-signature"></span>adapt<span class="signature">(r)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>把抓取函數之對外結果轉為內部流程用之結構</p>
+<p>四個fetchWebByXxx回傳{status:'success'|'error',...}，而執行計畫內部以{success:Boolean,...}判斷，
+由本函數轉換以隔離兩者</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="finalizeResult.mjs.html">finalizeResult.mjs</a>, <a href="finalizeResult.mjs.html#line21">line 21</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { adapt } from './src/finalizeResult.mjs'console.log(adapt({ status: 'success', html: '&lt;p>a&lt;/p>', method: 'curl' }))// => { success: true, html: '&lt;p>a&lt;/p>', method: 'curl', snapshot: undefined, contentKind: undefined }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>r</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入抓取函數之結果物件</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳內部結構物件，成功時為{success:true,html,method,snapshot,contentKind}，失敗時為{success:false,method,reason,message}</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="buildPlan"><span class="type-signature"></span>buildPlan<span class="signature">(url, method, doInspect)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>依網址與選項產生執行計畫</p>
+<p>四條網域分流與指定方法，差別僅在於「要跑哪幾階」，故一律表達為step陣列，
+交由同一個runPlan執行，不再各自複製一份「抓取至判識至解析」流程。</p>
+<p>本函數只回傳<strong>純資料</strong>：不捕捉url與opt、不建立closure、不修改任何共享狀態。
+轉址旗標之初值以redirect欄位回報，由runPlan擁有其後續變化</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="buildPlan.mjs.html">buildPlan.mjs</a>, <a href="buildPlan.mjs.html#line54">line 54</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import buildPlan from './src/buildPlan.mjs'
+
+console.log(buildPlan('https://example.com/', 'auto', true).plan.map((s) => s.key))
+// => ['curl', 'headless', 'headed', 'camofox']
+
+console.log(buildPlan('https://mp.weixin.qq.com/s/a', 'auto', true).plan.map((s) => s.key))
+// => ['camofox']</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入待抓取網址字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>method</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入方法字串，'auto'代表自動階梯升級</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>doInspect</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入是否做原始內容判識布林值，false時各階之inspect一律關閉</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳{plan,redirect,log}物件，plan為step描述陣列，redirect為轉址旗標初值，log為分流說明字串；method不合法時回傳{error}</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
 
         
             
@@ -377,6 +763,169 @@ console.log(estimateVisibleText('&lt;body>&lt;script>var a=1&lt;/script>&lt;div>
 
     
 
+    <h4 class="name" id="extractHtmlTitle"><span class="type-signature"></span>extractHtmlTitle<span class="signature">(html)</span><span class="type-signature"> &rarr; {String}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由網頁HTML取出標題，並剝除尾端之「-站名」</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="extractHtmlTitle.mjs.html">extractHtmlTitle.mjs</a>, <a href="extractHtmlTitle.mjs.html#line14">line 14</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import extractHtmlTitle from './src/extractHtmlTitle.mjs'console.log(extractHtmlTitle('&lt;html>&lt;head>&lt;title>流動性溢價的真相 - 格隆匯&lt;/title>&lt;/head>&lt;/html>'))// => '流動性溢價的真相'</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>html</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網頁HTML字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳標題字串，取不到時回傳空字串</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">String</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="extractPageContent"><span class="type-signature type-signature-async">(async) </span>extractPageContent<span class="signature">(page)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
@@ -389,13 +938,15 @@ console.log(estimateVisibleText('&lt;body>&lt;script>var a=1&lt;/script>&lt;div>
     <dt class="tag-description">Description:</dt>
     <dd class="tag-description"><ul class="dummy"><li><p>由Playwright之page提取網頁HTML，可見文字過少時穿透Shadow DOM</p>
 <p>先取page.content()，若估算可見文字已達門檻則直接回傳；否則遞迴穿透Shadow DOM取得
-各層innerText，再依換行切段重組為含article之簡易HTML，供Readability解析</p></li></ul></dd>
+各層innerText，再依換行切段重組為含article之簡易HTML，供Readability解析。</p>
+<p>回傳一併標明內容形態：合成內容之標籤結構已被剝除，其可信的判識證據與原始文件不同，
+故由本函數（唯一知道走了哪個出口者）標明，而非由下游猜測</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="extractPageContent.mjs.html">extractPageContent.mjs</a>, <a href="extractPageContent.mjs.html#line47">line 47</a>
+        <a href="extractPageContent.mjs.html">extractPageContent.mjs</a>, <a href="extractPageContent.mjs.html#line55">line 55</a>
     </li></ul></dd>
     
 
@@ -450,9 +1001,9 @@ let test = async () => {
     let browser = await chromium.launch({ headless: true, channel: 'chrome' })
     let page = await browser.newPage()
     await page.goto('https://example.com/')
-    let html = await extractPageContent(page)
-    console.log(html.length)
-    // => 234
+    let { html, contentKind } = await extractPageContent(page)
+    console.log(html.length, contentKind)
+    // => 234 'raw'
     await browser.close()
 
 }
@@ -532,7 +1083,7 @@ await test()
 
         
 <div class="param-desc">
-    <p>回傳Promise，resolve回傳網頁HTML字串</p>
+    <p>回傳Promise，resolve回傳{html,contentKind}物件，contentKind為'raw'或'synthesized'</p>
 </div>
 
 
@@ -559,7 +1110,7 @@ await test()
 
     
 
-    <h4 class="name" id="fetchWeb"><span class="type-signature type-signature-async">(async) </span>fetchWeb<span class="signature">(url, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    <h4 class="name" id="extractRedirectTarget"><span class="type-signature"></span>extractRedirectTarget<span class="signature">(url)</span><span class="type-signature"> &rarr; {String|null}</span></h4>
 
     
 
@@ -569,21 +1120,15 @@ await test()
 <dl class="details">
     
     <dt class="tag-description">Description:</dt>
-    <dd class="tag-description"><ul class="dummy"><li><p>抓取網頁文章內容，支援四種抓取方法自動階梯升級</p>
-<p>抓取方法：
-方法①curl(預設，繞過TLS指紋)，委派fetchWebByCurl；
-方法②Playwright無頭(SPA動態渲染頁面)，委派fetchWebByPlaywrightHeadless；
-方法③Playwright有頭(反自動化偵測)，委派fetchWebByPlaywrightHead；
-方法④Camofox反偵測瀏覽器(Cloudflare等)，委派fetchWebByCamofox</p>
-<p>本函數僅負責階梯升級、內容判識、文章解析之調度，實際抓取由4個抓取函數執行，
-流程為fetch(委派)至inspectHtml(原始內容檢測)至Readability解析(可選)；
-對已知網站另有轉址提取、跳過特定方法之判識規則，且方法④會額外回傳snapshot欄位</p></li></ul></dd>
+    <dd class="tag-description"><ul class="dummy"><li><p>由轉址服務之網址中提取其query參數所帶之真實網址</p>
+<p>僅處理已知會把目標網址放在query參數之服務；取出後之值已由URLSearchParams解碼一次，
+再解一次以處理雙重編碼，若該值非合法百分比序列則退回僅解碼一次之結果</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWeb.mjs.html">fetchWeb.mjs</a>, <a href="fetchWeb.mjs.html#line585">line 585</a>
+        <a href="routeByUrl.mjs.html">routeByUrl.mjs</a>, <a href="routeByUrl.mjs.html#line117">line 117</a>
     </li></ul></dd>
     
 
@@ -630,30 +1175,185 @@ await test()
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import fetchWeb from './src/fetchWeb.mjs'
+    <pre class="prettyprint"><code>import { extractRedirectTarget } from './src/routeByUrl.mjs'console.log(extractRedirectTarget('https://www.linkedin.com/redir/redirect?url=https%3A%2F%2Fa.com%2Fb'))// => 'https://a.com/b'</code></pre>
 
-let test = async () => {
 
-    //auto模式, 解析出文章標題與內文
-    let r = await fetchWeb('https://example.com/')
-    console.log(r.status, r.method, r.title, r.contentLength)
-    // => 'success' 'curl' 'Example Domain' 111
 
-    //指定curl且不解析, 直接取原始HTML
-    let rh = await fetchWeb('https://example.com/', { method: 'curl', parse: false })
-    console.log(rh.status, rh.html.length)
-    // => 'success' 559
 
-    //失敗時回傳error結果物件, 不會reject
-    let re = await fetchWeb('abc')
-    console.log(re.status, re.message)
-    // => 'error' 'invalid url (must be http/https)'
+    <h5 class="h5-parameters">Parameters:</h5>
+    
 
-}
-await test()
-    .catch((err) => {
-        console.log(err)
-    })</code></pre>
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>命中時回傳目標網址字串，未命中時回傳null</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">String</span>
+|
+
+<span class="param-type">null</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="fetchWeb"><span class="type-signature type-signature-async">(async) </span>fetchWeb<span class="signature">(url, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>抓取網頁文章內容，支援四種抓取方法自動階梯升級</p>
+<p>抓取方法：
+方法①curl(預設，繞過TLS指紋)，委派fetchWebByCurl；
+方法②Playwright無頭(SPA動態渲染頁面)，委派fetchWebByPlaywrightHeadless；
+方法③Playwright有頭(反自動化偵測)，委派fetchWebByPlaywrightHead；
+方法④Camofox反偵測瀏覽器(Cloudflare等)，委派fetchWebByCamofox</p>
+<p>本函數僅負責階梯升級、內容判識、文章解析之調度，實際抓取由4個抓取函數執行，
+流程為fetch(委派)至inspectHtml(原始內容檢測)至Readability解析(可選)；
+對已知網站另有轉址提取、跳過特定方法之判識規則，且方法④會額外回傳snapshot欄位</p>
+<p><strong>並行呼叫之限制</strong>：方法④之Camofox server綁定固定埠（預設19377），同一埠號同時只能有一個抓取，
+詳見fetchWebByCamofox之說明。auto模式可能升級至該階，故同時發動多個fetchWeb時，
+若其中一個以上走到方法④即會互相破壞（先完成者殺掉server，其餘回'camofox-error'）。
+需要並行時須為每個呼叫指定互不相同的opt.port；方法①②③則無此限制</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="fetchWeb.mjs.html">fetchWeb.mjs</a>, <a href="fetchWeb.mjs.html#line69">line 69</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import fetchWeb from './src/fetchWeb.mjs'let test = async () => {    //auto模式, 解析出文章標題與內文    let r = await fetchWeb('https://example.com/')    console.log(r.status, r.method, r.title, r.contentLength)    // => 'success' 'curl' 'Example Domain' 111    //指定curl且不解析, 直接取原始HTML    let rh = await fetchWeb('https://example.com/', { method: 'curl', parse: false })    console.log(rh.status, rh.html.length)    // => 'success' 559    //失敗時回傳error結果物件, 不會reject    let re = await fetchWeb('abc')    console.log(re.status, re.message)    // => 'error' 'invalid url (must be http/https)'}await test()    .catch((err) => {        console.log(err)    })</code></pre>
 
 
 
@@ -866,6 +1566,126 @@ await test()
 
         <tr>
             
+                <td class="name"><code>adapters</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>[]</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入站台adapter物件陣列，用於覆寫特定站台之內容解析方式，預設[]。形狀為{id,match,parse}，其完整契約（輸入形狀、輸出檢核、錯誤邊界）以src/adapterContract.mjs為唯一事實來源。使用端adapters排於內建adapters(gelonghui、bloomberg)之前故可覆寫之</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>inspect</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否以inspectHtml對抓取結果做原始內容判識布林值，預設true。關閉後不因判定為挑戰頁或空內容而升級，供呼叫端在已註冊adapter、自知如何解析該站台時避免內容被通用判識先行攔下（如內嵌__NEXT_DATA__但可見文字極少之頁面）</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>_fetchers</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入置換抓取函數之物件，僅供測試使用，鍵可為'curl'、'playwrightHeadless'、'playwrightHead'、'camofox'，值為與對應fetchWebByXxx同簽章之函數，未給之鍵沿用實際實作，預設null</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
                 <td class="name"><code>showLog</code></td>
             
 
@@ -972,7 +1792,7 @@ await test()
 
         
 <div class="param-desc">
-    <p>回傳Promise，resolve回傳結果物件，parse=true成功時為{status:'success',url,title,content,contentLength,method,fetchedAt,attempts}，parse=false成功時為{status:'success',url,html,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,fetchedAt,attempts}，本函數不會reject</p>
+    <p>回傳Promise，resolve回傳結果物件，其中attempts為各階嘗試紀錄陣列，成功之紀錄為{method,status:'success',htmlLength}(htmlLength為原始HTML長度，與頂層contentLength之正文長度不同)，失敗為{method,status:'failed',reason,message}，被判識或解析失敗為{method,status:'blocked',type,reason,message}（判識所致者reason與type同值）；parse=true成功時為{status:'success',url,title,content,contentLength,method,fetchedAt,attempts}，parse=false成功時為{status:'success',url,html,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,fetchedAt,attempts}，本函數不會reject</p>
 </div>
 
 
@@ -1016,15 +1836,25 @@ spawn <code>node &lt;server.js&gt;</code> 啟動Camofox server；
 POST /tabs 建立tab；
 GET /tabs/:id/snapshot 取accessibility snapshot(含內部重試)；
 DELETE /tabs/:id 關閉tab；
-殺整棵server進程樹(Windows用taskkill /F /T，Unix用SIGTERM)</p>
+殺整棵server進程樹(Windows用taskkill /F /T，Unix以負PID對spawn時建立之行程群組送SIGTERM)</p>
+<p>對server之每次HTTP請求皆有15秒硬上限，逾時即abort，不因server無回應而永久等待；
+單次嘗試之server啟動與清理皆由runCamofoxAttempt完成，故重試退避期間不會佔用該埠</p>
 <p>該套件之server.js無任何export且於top-level即無條件listen，故只能spawn為子行程執行，
-不可直接import；解析不到安裝位置時回傳reason='camofox-not-found'</p></li></ul></dd>
+不可直接import；解析不到安裝位置時回傳reason='camofox-not-found'。</p>
+<p>失敗歸因分三種：'camofox-not-found'為未安裝、'camofox-empty'為頁面確實無足量內容（重試無益）、
+'camofox-error'為server啟動失敗、tab建立失敗或snapshot傳輸失敗（可重試）</p>
+<p><strong>同一埠號同時只能有一個抓取在進行，本函數不可並行呼叫。</strong>
+Camofox server綁定固定埠（預設19377），且就緒探測只確認該埠有服務回應、不驗證是否為自己啟動者。
+故並行呼叫時：後啟動者因埠被占用而啟動失敗，卻會探到前者的server而誤認就緒並借用之；
+待任一方先完成，其清理程序會殺掉該server，另一方隨即全數失敗（回'camofox-error'）。
+需要並行時，<strong>必須為每個同時進行的呼叫指定互不相同的opt.port</strong>。
+此限制同樣適用於auto模式的fetchWeb——其階梯末階即為本函數。</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWebByCamofox.mjs.html">fetchWebByCamofox.mjs</a>, <a href="fetchWebByCamofox.mjs.html#line246">line 246</a>
+        <a href="fetchWebByCamofox.mjs.html">fetchWebByCamofox.mjs</a>, <a href="fetchWebByCamofox.mjs.html#line76">line 76</a>
     </li></ul></dd>
     
 
@@ -1071,23 +1901,7 @@ DELETE /tabs/:id 關閉tab；
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import fetchWebByCamofox from './src/fetchWebByCamofox.mjs'
-
-let test = async () => {
-
-    let r = await fetchWebByCamofox('https://mp.weixin.qq.com/s/xxxxxx')
-    console.log(r.status, r.snapshotChars, r.htmlLength)
-    // => 'success' 3215 4102
-
-    let re = await fetchWebByCamofox('abc')
-    console.log(re.status, re.reason)
-    // => 'error' 'invalid-url'
-
-}
-await test()
-    .catch((err) => {
-        console.log(err)
-    })</code></pre>
+    <pre class="prettyprint"><code>import fetchWebByCamofox from './src/fetchWebByCamofox.mjs'let test = async () => {    let r = await fetchWebByCamofox('https://mp.weixin.qq.com/s/xxxxxx')    console.log(r.status, r.snapshotChars, r.htmlLength)    // => 'success' 3215 4102    let re = await fetchWebByCamofox('abc')    console.log(re.status, re.reason)    // => 'error' 'invalid-url'}await test()    .catch((err) => {        console.log(err)    })</code></pre>
 
 
 
@@ -1253,7 +2067,7 @@ await test()
                 </td>
             
 
-            <td class="description last"><p>輸入Camofox server監聽埠號整數，預設19377</p></td>
+            <td class="description last"><p>輸入Camofox server監聽埠號整數，預設19377。並行呼叫時每個呼叫須給不同埠號</p></td>
         </tr>
 
     
@@ -1446,7 +2260,7 @@ await test()
 
         
 <div class="param-desc">
-    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,snapshot,snapshotChars,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject</p>
+    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,snapshot,snapshotChars,method,fetchedAt,attempts}（contentKind恆為'synthesized'，因內容由accessibility snapshot合成），失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject</p>
 </div>
 
 
@@ -1493,7 +2307,7 @@ HTTP 5xx與429及curl錯誤會自動重試(線性退避3至15秒)，HTTP 4xx(429
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWebByCurl.mjs.html">fetchWebByCurl.mjs</a>, <a href="fetchWebByCurl.mjs.html#line66">line 66</a>
+        <a href="fetchWebByCurl.mjs.html">fetchWebByCurl.mjs</a>, <a href="fetchWebByCurl.mjs.html#line58">line 58</a>
     </li></ul></dd>
     
 
@@ -1540,23 +2354,7 @@ HTTP 5xx與429及curl錯誤會自動重試(線性退避3至15秒)，HTTP 4xx(429
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import fetchWebByCurl from './src/fetchWebByCurl.mjs'
-
-let test = async () => {
-
-    let r = await fetchWebByCurl('https://example.com/')
-    console.log(r.status, r.httpCode, r.htmlLength)
-    // => 'success' 200 559
-
-    let re = await fetchWebByCurl('abc')
-    console.log(re.status, re.reason)
-    // => 'error' 'invalid-url'
-
-}
-await test()
-    .catch((err) => {
-        console.log(err)
-    })</code></pre>
+    <pre class="prettyprint"><code>import fetchWebByCurl from './src/fetchWebByCurl.mjs'let test = async () => {    let r = await fetchWebByCurl('https://example.com/')    console.log(r.status, r.httpCode, r.htmlLength)    // => 'success' 200 559    let re = await fetchWebByCurl('abc')    console.log(re.status, re.reason)    // => 'error' 'invalid-url'}await test()    .catch((err) => {        console.log(err)    })</code></pre>
 
 
 
@@ -1797,12 +2595,10 @@ await test()
             
                 <td class="default">
                 
-                    <code>'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'</code>
-                
                 </td>
             
 
-            <td class="description last"><p>輸入自訂User-Agent字串</p></td>
+            <td class="description last"><p>輸入自訂User-Agent字串，未給時採requestIdentity.mjs之DEFAULT_UA（偽裝為Chrome，否則curl會送出自己的UA而被擋）</p></td>
         </tr>
 
     
@@ -1837,12 +2633,10 @@ await test()
             
                 <td class="default">
                 
-                    <code>'https://www.google.com/'</code>
-                
                 </td>
             
 
-            <td class="description last"><p>輸入自訂Referer字串，預設'https://www.google.com/'</p></td>
+            <td class="description last"><p>輸入自訂Referer字串，未給時採requestIdentity.mjs之DEFAULT_REFERER</p></td>
         </tr>
 
     
@@ -1877,12 +2671,10 @@ await test()
             
                 <td class="default">
                 
-                    <code>'en-US,en;q=0.9,zh-TW;q=0.8'</code>
-                
                 </td>
             
 
-            <td class="description last"><p>輸入自訂Accept-Language字串，預設'en-US,en;q=0.9,zh-TW;q=0.8'</p></td>
+            <td class="description last"><p>輸入自訂Accept-Language字串，未給時採requestIdentity.mjs之DEFAULT_ACCEPT_LANG</p></td>
         </tr>
 
     
@@ -1915,7 +2707,7 @@ await test()
 
         
 <div class="param-desc">
-    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,httpCode,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}，本函數不會reject</p>
+    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,httpCode,contentKind,method,fetchedAt,attempts}（contentKind恆為'raw'），失敗時為{status:'error',url,message,reason,httpCode,method,fetchedAt,attempts}，本函數不會reject</p>
 </div>
 
 
@@ -1964,7 +2756,7 @@ await test()
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWebByPlaywrightHead.mjs.html">fetchWebByPlaywrightHead.mjs</a>, <a href="fetchWebByPlaywrightHead.mjs.html#line135">line 135</a>
+        <a href="fetchWebByPlaywrightHead.mjs.html">fetchWebByPlaywrightHead.mjs</a>, <a href="fetchWebByPlaywrightHead.mjs.html#line142">line 142</a>
     </li></ul></dd>
     
 
@@ -2011,23 +2803,7 @@ await test()
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import fetchWebByPlaywrightHead from './src/fetchWebByPlaywrightHead.mjs'
-
-let test = async () => {
-
-    let r = await fetchWebByPlaywrightHead('https://example.com/')
-    console.log(r.status, r.verificationClicked, r.htmlLength)
-    // => 'success' false 234
-
-    let re = await fetchWebByPlaywrightHead('abc')
-    console.log(re.status, re.reason)
-    // => 'error' 'invalid-url'
-
-}
-await test()
-    .catch((err) => {
-        console.log(err)
-    })</code></pre>
+    <pre class="prettyprint"><code>import fetchWebByPlaywrightHead from './src/fetchWebByPlaywrightHead.mjs'let test = async () => {    let r = await fetchWebByPlaywrightHead('https://example.com/')    console.log(r.status, r.verificationClicked, r.htmlLength)    // => 'success' false 234    let re = await fetchWebByPlaywrightHead('abc')    console.log(re.status, re.reason)    // => 'error' 'invalid-url'}await test()    .catch((err) => {        console.log(err)    })</code></pre>
 
 
 
@@ -2386,7 +3162,7 @@ await test()
 
         
 <div class="param-desc">
-    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,verificationClicked,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject</p>
+    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,verificationClicked,method,fetchedAt,attempts}（contentKind為'raw'或'synthesized'，後者代表內容由Shadow DOM穿透後合成），失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject</p>
 </div>
 
 
@@ -2434,7 +3210,7 @@ await test()
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWebByPlaywrightHeadless.mjs.html">fetchWebByPlaywrightHeadless.mjs</a>, <a href="fetchWebByPlaywrightHeadless.mjs.html#line61">line 61</a>
+        <a href="fetchWebByPlaywrightHeadless.mjs.html">fetchWebByPlaywrightHeadless.mjs</a>, <a href="fetchWebByPlaywrightHeadless.mjs.html#line50">line 50</a>
     </li></ul></dd>
     
 
@@ -2481,23 +3257,7 @@ await test()
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import fetchWebByPlaywrightHeadless from './src/fetchWebByPlaywrightHeadless.mjs'
-
-let test = async () => {
-
-    let r = await fetchWebByPlaywrightHeadless('https://example.com/')
-    console.log(r.status, r.htmlLength)
-    // => 'success' 234
-
-    let re = await fetchWebByPlaywrightHeadless('abc')
-    console.log(re.status, re.reason)
-    // => 'error' 'invalid-url'
-
-}
-await test()
-    .catch((err) => {
-        console.log(err)
-    })</code></pre>
+    <pre class="prettyprint"><code>import fetchWebByPlaywrightHeadless from './src/fetchWebByPlaywrightHeadless.mjs'let test = async () => {    let r = await fetchWebByPlaywrightHeadless('https://example.com/')    console.log(r.status, r.htmlLength)    // => 'success' 234    let re = await fetchWebByPlaywrightHeadless('abc')    console.log(re.status, re.reason)    // => 'error' 'invalid-url'}await test()    .catch((err) => {        console.log(err)    })</code></pre>
 
 
 
@@ -2816,7 +3576,7 @@ await test()
 
         
 <div class="param-desc">
-    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject</p>
+    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,method,fetchedAt,attempts}（contentKind為'raw'或'synthesized'，後者代表內容由Shadow DOM穿透後合成），失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject</p>
 </div>
 
 
@@ -2843,7 +3603,7 @@ await test()
 
     
 
-    <h4 class="name" id="getRetryWaitMs"><span class="type-signature"></span>getRetryWaitMs<span class="signature">(attempt)</span><span class="type-signature"> &rarr; {Integer}</span></h4>
+    <h4 class="name" id="fetchedAtIso"><span class="type-signature"></span>fetchedAtIso<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
 
     
 
@@ -2853,14 +3613,14 @@ await test()
 <dl class="details">
     
     <dt class="tag-description">Description:</dt>
-    <dd class="tag-description"><ul class="dummy"><li><p>取得重試前之線性退避等待毫秒</p>
-<p>第n次失敗後等待n*3000毫秒，上限15000毫秒，即3000、6000、9000、12000、15000、15000...</p></li></ul></dd>
+    <dd class="tag-description"><ul class="dummy"><li><p>取得ISO 8601 UTC格式時間戳</p>
+<p>供四個fetchWebByXxx使用，於進入函數時取值，代表「開始嘗試」的時間</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="getRetryWaitMs.mjs.html">getRetryWaitMs.mjs</a>, <a href="getRetryWaitMs.mjs.html#line24">line 24</a>
+        <a href="fetchedAt.mjs.html">fetchedAt.mjs</a>, <a href="fetchedAt.mjs.html#line32">line 32</a>
     </li></ul></dd>
     
 
@@ -2907,10 +3667,2219 @@ await test()
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import getRetryWaitMs from './src/getRetryWaitMs.mjs'
+    <pre class="prettyprint"><code>import { fetchedAtIso } from './src/fetchedAt.mjs'
 
-console.log(getRetryWaitMs(1), getRetryWaitMs(2), getRetryWaitMs(5), getRetryWaitMs(99))
-// => 3000 6000 15000 15000</code></pre>
+console.log(fetchedAtIso())
+// => '2026-09-09T08:00:00.000Z'</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳ISO 8601 UTC格式時間字串</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">String</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="fetchedAtLocal"><span class="type-signature"></span>fetchedAtLocal<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>取得本地時間格式時間戳</p>
+<p>供fetchWeb之finalize使用，於彙整結果時取值，代表「完成」的時間</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="fetchedAt.mjs.html">fetchedAt.mjs</a>, <a href="fetchedAt.mjs.html#line51">line 51</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { fetchedAtLocal } from './src/fetchedAt.mjs'
+
+console.log(fetchedAtLocal())
+// => '2026-09-09 16:00:00'</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳'YYYY-MM-DD HH:mm:ss'格式之本地時間字串</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">String</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="finalize"><span class="type-signature"></span>finalize<span class="signature">(url, result, attempts)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>彙整fetchWeb之最終回傳結果</p>
+<p>成功且已解析時輸出title與content，成功但未解析時輸出html；
+失敗時輸出message，並於有失敗歸因時附上reason</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="finalizeResult.mjs.html">finalizeResult.mjs</a>, <a href="finalizeResult.mjs.html#line67">line 67</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { finalize } from './src/finalizeResult.mjs'console.log(finalize('https://a.com/', { success: false, reason: 'empty-content', message: 'too short' }, []))// => { status: 'error', url: 'https://a.com/', message: 'too short', fetchedAt: '2026-09-09 16:00:00', attempts: [], reason: 'empty-content' }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>result</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入內部結構之結果物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>attempts</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入各階嘗試紀錄陣列</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳對外之結果物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="findAdapter"><span class="type-signature type-signature-async">(async) </span>findAdapter<span class="signature">(url, adapters)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由adapter清單中找出第一個命中網址者</p>
+<p>adapter之形狀與合法性判準以src/adapterContract.mjs為唯一事實來源，本函數只負責挑選。</p>
+<p>依序試各adapter，第一個命中者勝出；條目不合法(非物件、缺id、match型別不符、缺parse)一律略過。
+match執行拋錯時回傳type='error'而非視為未命中——呼叫端註冊了adapter即代表選定該解析階段，
+若靜默改用預設解析器，等於讓呼叫端在不知情下經歷未選擇的處理管線階段，故一律顯性回報。
+match之回傳值一律await，故async match可正常運作，其reject亦被同一錯誤邊界攔下</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="findAdapter.mjs.html">findAdapter.mjs</a>, <a href="findAdapter.mjs.html#line49">line 49</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import findAdapter from './src/findAdapter.mjs'let adapters = [    { id: 'a', match: /^https?:\/\/a\.com\//, parse: () => ({ success: true }) },    { id: 'b', match: (u) => { let m = u.match(/\/ar-(\w+)/); return m ? { id: m[1] } : null }, parse: () => ({ success: true }) },]console.log(findAdapter('https://a.com/x', adapters).adapter.id)// => 'a'console.log(findAdapter('https://b.com/ar-AA1X', adapters).ctx)// => { id: 'AA1X' }console.log(findAdapter('https://c.com/', adapters))// => { type: 'miss' }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入待比對網址字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>adapters</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入adapter物件陣列，非陣列時視為空陣列</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve回傳結果物件，命中時為{type:'hit',adapter,ctx}，其中ctx為match函數之回傳值(RegExp或回傳true時為null)；未命中時為{type:'miss'}；match執行拋錯時為{type:'error',id,message}，本函數不會reject</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getBrowserPageOptions"><span class="type-signature"></span>getBrowserPageOptions<span class="signature">(opt)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由請求身分組出Playwright之newPage選項</p>
+<p>只帶入使用者明確指定者，全未指定時回傳空物件使瀏覽器沿用自身身分</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="requestIdentity.mjs.html">requestIdentity.mjs</a>, <a href="requestIdentity.mjs.html#line89">line 89</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getBrowserPageOptions } from './src/requestIdentity.mjs'
+
+console.log(getBrowserPageOptions({ userAgent: 'X/1.0' }))
+// => { userAgent: 'X/1.0' }
+
+console.log(getBrowserPageOptions({}))
+// => {}</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Playwright之newPage選項物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getCurlIdentity"><span class="type-signature"></span>getCurlIdentity<span class="signature">(opt)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>取得curl階之HTTP請求身分，未指定者採預設值</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="requestIdentity.mjs.html">requestIdentity.mjs</a>, <a href="requestIdentity.mjs.html#line61">line 61</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getCurlIdentity } from './src/requestIdentity.mjs'
+
+console.log(getCurlIdentity({}).referer)
+// => 'https://www.google.com/'</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳{userAgent,referer,acceptLanguage}物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getOptArr"><span class="type-signature"></span>getOptArr<span class="signature">(opt, key, def)</span><span class="type-signature"> &rarr; {Array}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由設定物件取陣列選項，型別不符時採預設值</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="getOpt.mjs.html">getOpt.mjs</a>, <a href="getOpt.mjs.html#line148">line 148</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getOptArr } from './src/getOpt.mjs'
+
+console.log(getOptArr({ adapters: [1] }, 'adapters', []), getOptArr({ adapters: 'x' }, 'adapters', []))
+// => [1] []</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>key</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入鍵名字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>def</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入預設值陣列</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳選項陣列</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getOptBool"><span class="type-signature"></span>getOptBool<span class="signature">(opt, key, def)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由設定物件取布林選項，型別不符時採預設值</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="getOpt.mjs.html">getOpt.mjs</a>, <a href="getOpt.mjs.html#line68">line 68</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getOptBool } from './src/getOpt.mjs'
+
+console.log(getOptBool({ parse: false }, 'parse', true), getOptBool({ parse: 'x' }, 'parse', true))
+// => false true</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>key</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入鍵名字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>def</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入預設值布林值</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳選項布林值</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getOptP0Int"><span class="type-signature"></span>getOptP0Int<span class="signature">(opt, key, def)</span><span class="type-signature"> &rarr; {Integer}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由設定物件取非負整數選項，型別不符時採預設值</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="getOpt.mjs.html">getOpt.mjs</a>, <a href="getOpt.mjs.html#line108">line 108</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getOptP0Int } from './src/getOpt.mjs'
+
+console.log(getOptP0Int({ maxRetries: 0 }, 'maxRetries', 5), getOptP0Int({ maxRetries: -1 }, 'maxRetries', 5))
+// => 0 5</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>key</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入鍵名字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>def</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入預設值整數</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳選項整數</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Integer</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getOptPInt"><span class="type-signature"></span>getOptPInt<span class="signature">(opt, key, def)</span><span class="type-signature"> &rarr; {Integer}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由設定物件取正整數選項，型別不符時採預設值</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="getOpt.mjs.html">getOpt.mjs</a>, <a href="getOpt.mjs.html#line88">line 88</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getOptPInt } from './src/getOpt.mjs'
+
+console.log(getOptPInt({ timeoutMs: 3000 }, 'timeoutMs', 15000), getOptPInt({ timeoutMs: 0 }, 'timeoutMs', 15000))
+// => 3000 15000</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>key</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入鍵名字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>def</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入預設值整數</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳選項整數</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Integer</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getOptStr"><span class="type-signature"></span>getOptStr<span class="signature">(opt, key, def)</span><span class="type-signature"> &rarr; {String}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由設定物件取非空字串選項，型別不符時採預設值</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="getOpt.mjs.html">getOpt.mjs</a>, <a href="getOpt.mjs.html#line128">line 128</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getOptStr } from './src/getOpt.mjs'
+
+console.log(getOptStr({ method: 'curl' }, 'method', 'auto'), getOptStr({ method: '' }, 'method', 'auto'))
+// => 'curl' 'auto'</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>key</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入鍵名字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>def</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入預設值字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳選項字串</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">String</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getRequestIdentity"><span class="type-signature"></span>getRequestIdentity<span class="signature">(opt)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>取得使用者明確指定之HTTP請求身分，未指定者為空字串</p>
+<p>供瀏覽器階使用：只有非空者才覆寫瀏覽器自身之身分</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="requestIdentity.mjs.html">requestIdentity.mjs</a>, <a href="requestIdentity.mjs.html#line39">line 39</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { getRequestIdentity } from './src/requestIdentity.mjs'
+
+console.log(getRequestIdentity({ userAgent: 'X/1.0' }))
+// => { userAgent: 'X/1.0', referer: '', acceptLanguage: '' }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳{userAgent,referer,acceptLanguage}物件，未指定之項目為空字串</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getRetryWaitMs"><span class="type-signature"></span>getRetryWaitMs<span class="signature">(attempt)</span><span class="type-signature"> &rarr; {Integer}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>取得重試前之線性退避等待毫秒</p>
+<p>第n次失敗後等待n*3000毫秒，上限15000毫秒，即3000、6000、9000、12000、15000、15000...</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="getRetryWaitMs.mjs.html">getRetryWaitMs.mjs</a>, <a href="getRetryWaitMs.mjs.html#line28">line 28</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import getRetryWaitMs from './src/getRetryWaitMs.mjs'console.log(getRetryWaitMs(1), getRetryWaitMs(2), getRetryWaitMs(5), getRetryWaitMs(99))// => 3000 6000 15000 15000</code></pre>
 
 
 
@@ -3231,7 +6200,7 @@ console.log(getUrlErrorResult('abc', 'curl', 'now'))
 
     
 
-    <h4 class="name" id="inspectHtml"><span class="type-signature"></span>inspectHtml<span class="signature">(html)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name" id="inspectHtml"><span class="type-signature"></span>inspectHtml<span class="signature">(html, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
 
     
 
@@ -3243,13 +6212,17 @@ console.log(getUrlErrorResult('abc', 'curl', 'now'))
     <dt class="tag-description">Description:</dt>
     <dd class="tag-description"><ul class="dummy"><li><p>由網頁原始HTML檢測頁面是否為有效內容</p>
 <p>純粹基於原始HTML結構判斷，不依賴Readability，用於判識CAPTCHA與反爬蟲挑戰頁、驗證頁、
-轉址包裝頁、空內容頁，供階梯升級決策使用</p></li></ul></dd>
+轉址包裝頁、空內容頁，供階梯升級決策使用。
+判識器以資料表定義並依序比對，首個命中者勝出；順序本身即語意，調動順序會改變判定結果。</p>
+<p>contentKind標明待測內容是抓取器取回的原始文件，或由已渲染DOM萃取後合成者。
+合成內容之標籤結構已被剝除，故只比對semantic類判識器；預設為'raw'，
+亦即未指定時行為與原先一致</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWeb.mjs.html">fetchWeb.mjs</a>, <a href="fetchWeb.mjs.html#line132">line 132</a>
+        <a href="inspectHtml.mjs.html">inspectHtml.mjs</a>, <a href="inspectHtml.mjs.html#line253">line 253</a>
     </li></ul></dd>
     
 
@@ -3296,7 +6269,7 @@ console.log(getUrlErrorResult('abc', 'curl', 'now'))
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import { inspectHtml } from './src/fetchWeb.mjs'
+    <pre class="prettyprint"><code>import inspectHtml from './src/inspectHtml.mjs'
 
 console.log(inspectHtml('&lt;html>&lt;head>&lt;title>Just a moment&lt;/title>&lt;/head>&lt;body>&lt;/body>&lt;/html>'))
 // => { pass: false, type: 'captcha', message: 'Cloudflare/anti-bot challenge' }
@@ -3320,7 +6293,11 @@ console.log(inspectHtml('&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt
         <th>Type</th>
 
         
+        <th>Attributes</th>
+        
 
+        
+        <th>Default</th>
         
 
         <th class="last">Description</th>
@@ -3346,10 +6323,132 @@ console.log(inspectHtml('&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入網頁HTML字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>contentKind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'raw'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入內容形態字串，'raw'為原始文件，'synthesized'為合成內容，預設'raw'</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -3387,6 +6486,172 @@ console.log(inspectHtml('&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt
     <dd>
         
 <span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="isValidAdapter"><span class="type-signature"></span>isValidAdapter<span class="signature">(adapter)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>檢核adapter條目是否符合輸入契約</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="adapterContract.mjs.html">adapterContract.mjs</a>, <a href="adapterContract.mjs.html#line48">line 48</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { isValidAdapter } from './src/adapterContract.mjs'
+
+console.log(isValidAdapter({ id: 'a', match: /x/, parse: () => ({}) }), isValidAdapter({ id: 'a', match: 'x', parse: () => ({}) }))
+// => true false</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>adapter</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入待檢核之adapter</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳是否合法之布林值</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
 
 
 
@@ -3551,6 +6816,174 @@ console.log(isValidUrl('www.google.com'))
         
 <div class="param-desc">
     <p>回傳是否為有效http或https網址之布林值</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="meetsMinContent"><span class="type-signature"></span>meetsMinContent<span class="signature">(content)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>判定正文長度是否達最低門檻</p>
+<p>adapter路徑與Readability路徑刻意採同一標準，故兩處皆呼叫本函數而非各自比較，
+避免同一規則手寫兩處而日後分歧</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="adapterContract.mjs.html">adapterContract.mjs</a>, <a href="adapterContract.mjs.html#line90">line 90</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { meetsMinContent } from './src/adapterContract.mjs'
+
+console.log(meetsMinContent('x'.repeat(50)), meetsMinContent('x'.repeat(49)))
+// => true false</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>content</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入正文字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳是否達門檻之布林值</p>
 </div>
 
 
@@ -3806,6 +7239,1235 @@ await test()
 
     
 
+    <h4 class="name" id="normalizeParsed"><span class="type-signature"></span>normalizeParsed<span class="signature">(parsed, pre)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>把adapter之parse回傳值檢核並投影為固定形狀</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="adapterContract.mjs.html">adapterContract.mjs</a>, <a href="adapterContract.mjs.html#line109">line 109</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { normalizeParsed } from './src/adapterContract.mjs'
+
+console.log(normalizeParsed({ success: 'true', content: 'x' }, 'adapter a '))
+// => { success: false, reason: 'parse-error', message: 'adapter a returned non-boolean success' }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>parsed</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入adapter.parse之回傳值</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>pre</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入錯誤訊息前綴字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳內部結構結果物件，成功時為{success:true,title,content,contentLength}，失敗時為{success:false,reason,message}</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="parseBloomberg"><span class="type-signature"></span>parseBloomberg<span class="signature">(html, url)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>解析Bloomberg之文章內文</p>
+<p>由<script id="__NEXT_DATA__">取出props.pageProps.story.body.content區塊陣列，
+跳過廣告與媒體等非內文型別後，遞迴取出各區塊之文字並以兩換行相接；
+作為內建站台adapter之parse掛點使用</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="parseBloomberg.mjs.html">parseBloomberg.mjs</a>, <a href="parseBloomberg.mjs.html#line25">line 25</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { defaultAdapters } from './src/fetchWeb.mjs'
+
+let r = defaultAdapters[1].parse(html, 'https://www.bloomberg.com/news/articles/2026-01-01/abc')
+console.log(r.success, r.contentLength)
+// => true 58</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>html</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網頁HTML字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串，本解析器未使用</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳解析結果物件，成功時為{success:true,title,content,contentLength}，失敗時為{success:false,reason,message}</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="parseGelonghui"><span class="type-signature"></span>parseGelonghui<span class="signature">(html, url)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>解析格隆匯之文章與快訊內文</p>
+<p>由Nuxt SSR state中之dtbDetail(快訊)或articleDetail(文章)欄位取出content，
+反轉義後剝除HTML標籤與實體並壓縮空白；作為內建站台adapter之parse掛點使用</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="parseGelonghui.mjs.html">parseGelonghui.mjs</a>, <a href="parseGelonghui.mjs.html#line82">line 82</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { defaultAdapters } from './src/fetchWeb.mjs'
+
+let r = defaultAdapters[0].parse(html, 'https://www.gelonghui.com/p/123456')
+console.log(r.success, r.title)
+// => true '流動性溢價的真相'</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>html</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網頁HTML字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串，本解析器未使用</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳解析結果物件，成功時為{success:true,title,content,contentLength}，失敗時為{success:false,reason,message}</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="requiresCamofox"><span class="type-signature"></span>requiresCamofox<span class="signature">(url)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>判識網址是否為已知須Camofox反偵測瀏覽器之網站</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routeByUrl.mjs.html">routeByUrl.mjs</a>, <a href="routeByUrl.mjs.html#line44">line 44</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { requiresCamofox } from './src/routeByUrl.mjs'console.log(requiresCamofox('https://mp.weixin.qq.com/s/abc'))// => true</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳是否命中之布林值</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="requiresHeaded"><span class="type-signature"></span>requiresHeaded<span class="signature">(url)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>判識網址是否為已知須Playwright有頭模式之網站</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routeByUrl.mjs.html">routeByUrl.mjs</a>, <a href="routeByUrl.mjs.html#line22">line 22</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { requiresHeaded } from './src/routeByUrl.mjs'console.log(requiresHeaded('https://www.wsj.com/articles/abc'))// => true</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳是否命中之布林值</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="requiresHeadless"><span class="type-signature"></span>requiresHeadless<span class="signature">(url)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>判識網址是否為已知SPA網站</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routeByUrl.mjs.html">routeByUrl.mjs</a>, <a href="routeByUrl.mjs.html#line91">line 91</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { requiresHeadless } from './src/routeByUrl.mjs'console.log(requiresHeadless('https://www.msn.com/en-us/a/ar-A1'))// => true</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳是否命中之布林值</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="requiresJsRedirect"><span class="type-signature"></span>requiresJsRedirect<span class="signature">(url)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>判識網址是否為已知須執行JS之轉址服務</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routeByUrl.mjs.html">routeByUrl.mjs</a>, <a href="routeByUrl.mjs.html#line69">line 69</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { requiresJsRedirect } from './src/routeByUrl.mjs'console.log(requiresJsRedirect('https://news.google.com/articles/abc'))// => true</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入網址字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳是否命中之布林值</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="resolveCamofoxServer"><span class="type-signature"></span>resolveCamofoxServer<span class="signature">()</span><span class="type-signature"> &rarr; {String|null}</span></h4>
 
     
@@ -3929,6 +8591,1129 @@ console.log(resolveCamofoxServer())
 
     
 
+    <h4 class="name" id="runCamofoxAttempt"><span class="type-signature type-signature-async">(async) </span>runCamofoxAttempt<span class="signature">(url, cfg)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>執行一次完整的Camofox抓取嘗試</p>
+<p>本函數擁有單次嘗試的<strong>完整資源生命週期</strong>：spawn server、等待就緒、進行tab對話、
+並於回傳前必定殺掉整棵server進程樹。</p>
+<p>資源必須在本函數回傳前釋放，呼叫端才可以安全地進入重試退避——
+若把清理留給呼叫端的finally，退避的3至15秒期間server與其佔用的埠會繼續存活</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="runCamofoxAttempt.mjs.html">runCamofoxAttempt.mjs</a>, <a href="runCamofoxAttempt.mjs.html#line153">line 153</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入待抓取網址字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>cfg</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>camofoxServer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入Camofox server之server.js絕對路徑字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>port</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入server監聽埠號整數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>serverStartTimeoutMs</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入等待server就緒最長毫秒整數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>snapshotRetries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入snapshot內容不足時之重取次數整數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>snapshotWaitMs</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入snapshot重取間隔毫秒整數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>snapshotMinChars</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入snapshot最低有效字數整數</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve回傳{ok:true,snapshot,snapshotChars}或{ok:false,reason,message}，本函數不會reject</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="runPlan"><span class="type-signature type-signature-async">(async) </span>runPlan<span class="signature">(url, opt, parse, showLog, adapters, plan, redirect)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>依序執行計畫中各階，首個取得可用內容者勝出</p>
+<p>轉址旗標之後續變化由本函數擁有：某階被判為轉址包裝頁時，後續之Playwright階改以等待轉址方式抓取</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="runPlan.mjs.html">runPlan.mjs</a>, <a href="runPlan.mjs.html#line85">line 85</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入待抓取網址字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>parse</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入是否解析文章布林值</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>showLog</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入是否顯示過程訊息布林值</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>adapters</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入站台adapter陣列</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>plan</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入step描述陣列，由buildPlan產生</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>redirect</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入轉址旗標初值</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve回傳對外之結果物件，本函數不會reject</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="runPlaywright"><span class="type-signature type-signature-async">(async) </span>runPlaywright<span class="signature">(url, opt, cfg)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>以Playwright抓取網頁原始HTML之共用流程</p>
+<p>無頭與有頭兩種模式僅差別於：方法名稱、導航後預設等待毫秒、瀏覽器啟動參數、
+開頁後之前置處理、導航後之額外處理與其帶回之結果欄位。
+其餘（網址檢核、選項解析、重試與線性退避、Shadow DOM穿透、瀏覽器關閉）完全相同，
+故收斂於本函數，由fetchWebByPlaywrightHeadless與fetchWebByPlaywrightHead各自帶入設定</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="runPlaywright.mjs.html">runPlaywright.mjs</a>, <a href="runPlaywright.mjs.html#line77">line 77</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入待抓取網址字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件，由呼叫端原樣轉入</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>cfg</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入模式設定物件</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>method</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入方法名稱字串，寫入結果物件之method欄位</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>logName</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入重試訊息之前綴名稱字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>defaultPostWaitMs</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入導航後等待毫秒之預設值整數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>launch</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入chromium.launch之參數物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onPage</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入開頁後、導航前之前置處理async函數，簽章為(page)，預設null</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>afterNavigate</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入導航後、取內容前之處理async函數，簽章為(page,opt)，其回傳物件會併入成功結果，預設null</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,...cfg.afterNavigate之回傳,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="snapshotToHtml"><span class="type-signature"></span>snapshotToHtml<span class="signature">(snapshot, pageTitle<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {String}</span></h4>
 
     
@@ -3947,7 +9732,7 @@ banner、navigation等結構容器標記</p></li></ul></dd>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="fetchWebByCamofox.mjs.html">fetchWebByCamofox.mjs</a>, <a href="fetchWebByCamofox.mjs.html#line88">line 88</a>
+        <a href="snapshotToHtml.mjs.html">snapshotToHtml.mjs</a>, <a href="snapshotToHtml.mjs.html#line21">line 21</a>
     </li></ul></dd>
     
 
@@ -3994,10 +9779,7 @@ banner、navigation等結構容器標記</p></li></ul></dd>
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>import { snapshotToHtml } from './src/fetchWebByCamofox.mjs'
-
-console.log(snapshotToHtml('- heading "abc" [level=1]\n- paragraph: def', 'abc'))
-// => '&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt;body>&lt;article>&lt;h1>abc&lt;/h1>\n&lt;h1>abc&lt;/h1>\n&lt;p>def&lt;/p>&lt;/article>&lt;/body>&lt;/html>'</code></pre>
+    <pre class="prettyprint"><code>import snapshotToHtml from './src/snapshotToHtml.mjs'console.log(snapshotToHtml('- heading "abc" [level=1]\n- paragraph: def', 'abc'))// => '&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;title>abc&lt;/title>&lt;/head>&lt;body>&lt;article>&lt;h1>abc&lt;/h1>\n&lt;h1>abc&lt;/h1>\n&lt;p>def&lt;/p>&lt;/article>&lt;/body>&lt;/html>'</code></pre>
 
 
 
@@ -4149,6 +9931,518 @@ console.log(snapshotToHtml('- heading "abc" [level=1]\n- paragraph: def', 'abc')
 
 
         
+            
+
+    
+
+    <h4 class="name" id="summarizeFail"><span class="type-signature"></span>summarizeFail<span class="signature">(r)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由抓取失敗之內部結構彙整為一筆attempt</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="finalizeResult.mjs.html">finalizeResult.mjs</a>, <a href="finalizeResult.mjs.html#line44">line 44</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import { summarizeFail } from './src/finalizeResult.mjs'console.log(summarizeFail({ success: false, reason: 'http-error', message: 'HTTP 500' }))// => { status: 'failed', reason: 'http-error', message: 'HTTP 500' }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>r</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入內部結構之失敗結果物件</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳{status:'failed',reason,message}物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="withRetry"><span class="type-signature type-signature-async">(async) </span>withRetry<span class="signature">(attemptFn, cfg)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>以線性退避重試單次嘗試函數，直到成功或次數用盡</p>
+<p>三個抓取器的重試骨架原本各寫一份（含退避訊息共四處），本函數為其唯一實作。</p>
+<p>單次嘗試函數回傳<code>{ok:true,...}</code>表示成功，回傳<code>{ok:false,...}</code>表示失敗；
+失敗時以<code>retryable:false</code>表示該錯誤不應重試（如HTTP 4xx、內容過短），
+未指定則視為可重試。抓取器自身的欄位（httpCode、html等）原樣帶回，本函數不解讀</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="withRetry.mjs.html">withRetry.mjs</a>, <a href="withRetry.mjs.html#line41">line 41</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import withRetry from './src/withRetry.mjs'
+
+let test = async () => {
+
+    let n = 0
+    let r = await withRetry(async () => {
+        n += 1
+        return n &lt; 2 ? { ok: false, message: 'boom' } : { ok: true, value: n }
+    }, { maxRetries: 3, tag: 'demo' })
+    console.log(r.ok, r.value, r.attempts)
+    // => true 2 2
+
+}
+await test()
+    .catch((err) => {
+        console.log(err)
+    })</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>attemptFn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入單次嘗試async函數，簽章為(attempt)，回傳{ok,retryable,message,...}</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>cfg</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>maxRetries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Integer</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入最大重試次數整數，含初始共執行maxRetries+1次</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tag</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入退避訊息之來源標籤字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>showLog</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否輸出退避訊息布林值，預設true</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve回傳單次嘗試函數之最後結果並附加attempts實際執行次數</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
     
 
     
@@ -4168,7 +10462,7 @@ console.log(snapshotToHtml('- heading "abc" [level=1]\n- paragraph: def', 'abc')
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Sep 05 2026 22:05:33 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Thu Sep 10 2026 18:00:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

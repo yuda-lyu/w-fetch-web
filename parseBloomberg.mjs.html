@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>getRetryWaitMs.mjs - Documentation</title>
+    <title>parseBloomberg.mjs - Documentation</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -35,7 +35,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">getRetryWaitMs.mjs</h1>
+    <h1 class="page-title">parseBloomberg.mjs</h1>
     
 
     
@@ -45,48 +45,85 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>import ispint from 'wsemi/src/ispint.mjs'
-
-
-//重試政策: 本模組為其單一擁有者
-//預設重試次數(含初始共執行DEFAULT_MAX_RETRIES+1次)
-let DEFAULT_MAX_RETRIES = 5
-
-//線性退避之初始與上限毫秒
-let INITIAL_WAIT_MS = 3000
-let MAX_WAIT_MS = 15000
+            <pre class="prettyprint source linenums"><code>import { meetsMinContent } from './adapterContract.mjs'
+import extractHtmlTitle from './extractHtmlTitle.mjs'
 
 
 /**
- * 取得重試前之線性退避等待毫秒
+ * 解析Bloomberg之文章內文
  *
- * 第n次失敗後等待n*3000毫秒，上限15000毫秒，即3000、6000、9000、12000、15000、15000...
+ * 由&lt;script id="__NEXT_DATA__">取出props.pageProps.story.body.content區塊陣列，
+ * 跳過廣告與媒體等非內文型別後，遞迴取出各區塊之文字並以兩換行相接；
+ * 作為內建站台adapter之parse掛點使用
  *
- * @param {Integer} attempt 輸入第幾次嘗試之正整數，由1起算
- * @returns {Integer} 回傳等待毫秒整數
+ * @param {String} html 輸入網頁HTML字串
+ * @param {String} url 輸入網址字串，本解析器未使用
+ * @returns {Object} 回傳解析結果物件，成功時為{success:true,title,content,contentLength}，失敗時為{success:false,reason,message}
  * @example
  *
- * import getRetryWaitMs from './src/getRetryWaitMs.mjs'
+ * import { defaultAdapters } from './src/fetchWeb.mjs'
  *
- * console.log(getRetryWaitMs(1), getRetryWaitMs(2), getRetryWaitMs(5), getRetryWaitMs(99))
- * // => 3000 6000 15000 15000
+ * let r = defaultAdapters[1].parse(html, 'https://www.bloomberg.com/news/articles/2026-01-01/abc')
+ * console.log(r.success, r.contentLength)
+ * // => true 58
  *
  */
-function getRetryWaitMs(attempt) {
+//Bloomberg, 由__NEXT_DATA__提取story.body.content
+function parseBloomberg(html, url) {
 
-    //check
-    //attempt由1起算, 0不在契約內。此處須用ispint而非isp0int——
-    //isp0int允許0會使getRetryWaitMs(0)回0, 若日後共用retry runner採零起算即成熱迴圈
-    if (!ispint(attempt)) {
-        return INITIAL_WAIT_MS
+    let m = html.match(/&lt;script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)&lt;\/script>/)
+    if (!m) {
+        return { success: false, reason: 'adapter-parse-miss', message: 'bloomberg: no __NEXT_DATA__' }
     }
 
-    return Math.min(INITIAL_WAIT_MS * attempt, MAX_WAIT_MS)
+    let data
+    try {
+        data = JSON.parse(m[1])
+    }
+    catch {
+        return { success: false, reason: 'adapter-parse-miss', message: 'bloomberg: __NEXT_DATA__ JSON parse failed' }
+    }
+
+    let story = data?.props?.pageProps?.story
+    let blocks = story?.body?.content
+    if (!Array.isArray(blocks) || blocks.length === 0) {
+        return { success: false, reason: 'adapter-parse-miss', message: 'bloomberg: no story.body.content' }
+    }
+
+    let SKIP = new Set(['ad', 'inline-newsletter', 'inline-recirc', 'media', 'image', 'video', 'blockquote-instagram'])
+    let nodeText = (n) => {
+        if (n === null || typeof n !== 'object') {
+            return ''
+        }
+        let t = typeof n.value === 'string' ? n.value : ''
+        if (Array.isArray(n.content)) {
+            t += n.content.map(nodeText).join('')
+        }
+        return t
+    }
+
+    let paragraphs = []
+    for (let block of blocks) {
+        if (SKIP.has(block?.type)) {
+            continue
+        }
+        let t = nodeText(block).replace(/\s+/g, ' ').trim()
+        if (t.length > 0) {
+            paragraphs.push(t)
+        }
+    }
+
+    let content = paragraphs.join('\n\n')
+    let title = (typeof story.headline === 'string' ? story.headline : extractHtmlTitle(html)).trim()
+
+    if (!meetsMinContent(content)) {
+        return { success: false, reason: 'empty-content', message: 'bloomberg: content too short (' + content.length + ' chars)' }
+    }
+    return { success: true, title, content, contentLength: content.length }
 }
 
 
-export { DEFAULT_MAX_RETRIES }
-export default getRetryWaitMs
+export default parseBloomberg
 </code></pre>
         </article>
     </section>

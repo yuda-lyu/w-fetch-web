@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>getOpt.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">getOpt.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import isbol from 'wsemi/src/isbol.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import isarr from 'wsemi/src/isarr.mjs'
+import ispint from 'wsemi/src/ispint.mjs'
+import isp0int from 'wsemi/src/isp0int.mjs'
+import cint from 'wsemi/src/cint.mjs'
+import cbol from 'wsemi/src/cbol.mjs'
+
+
+//共用之取值與檢核: 型別不符一律採預設值, 不拋錯
+//本套件之公開函數皆以「不reject、非法輸入退回預設」為契約, 故各選項一律經此處理
+//
+//── 各型別之寬容度並不一致, 此為刻意 ──
+//  數字類(getOptPInt／getOptP0Int)  **接受數字字串並轉為數字**: 逾時、埠號、重試次數
+//                                   常來自環境變數、CLI參數或JSON設定, 到手即為字串,
+//                                   要求呼叫端自行轉型只會讓每個呼叫端各寫一次parseInt
+//  布林類(getOptBool)               **只接受真布林**: 字串'false'為truthy, 一旦接受字串,
+//                                   呼叫端寫'false'卻得到true, 是與其書寫相反的行為
+//  字串類與陣列類                    只接受該型別本身
+//
+//此差異由 unit-getOpt 之「各型別寬容度」一節鎖住。
+//先前本註解寫的是「不嘗試強制轉換」, 與數字類之實作相反
+function _pick(opt, key, def, isOk, cast) {
+    //單層鍵取值, 不需外部套件; opt非物件或鍵不存在皆得undefined而落入預設
+    let v = opt?.[key]
+    if (!isOk(v)) {
+        return def
+    }
+    return cast ? cast(v) : v
+}
+
+
+//數字類之檢核分兩層, 職責不同
+//
+//第一層 useLimitSafe(wsemi 1.8.90起): 回答「是不是安全整數」。
+//  不加此選項時ispint(Infinity)為true——cdbl以lodash之toFinite把Infinity夾成
+//  Number.MAX_VALUE, 而該值是整數故判定通過。此為型別層的事, 由wsemi負責, 本套件不另寫
+//
+//第二層 MAX_TIMER_MS: 回答「這個值能不能進計時器」, 屬本套件對選項的契約, wsemi無從得知。
+//  安全整數上限為2^53-1, 但setTimeout與child_process之timeout只吃32位元有號整數,
+//  超過即溢位而被Node設為1毫秒。實測 timeout:3e9(是安全整數)使curl於22毫秒內被SIGTERM殺掉,
+//  timeoutMs:Infinity亦同——呼叫端寫的是「不要逾時」, 得到的卻是「立即逾時」。
+//  逾時、等待間隔類選項皆會進計時器; 埠號與重試次數雖不會, 但其正當值遠小於此上限,
+//  故統一套用不會擋掉任何合理用法
+let OPT_SAFE = { useLimitSafe: true }
+let MAX_TIMER_MS = 2147483647
+
+function _inTimerRange(v) {
+    return cint(v) &lt;= MAX_TIMER_MS
+}
+
+
+/**
+ * 由設定物件取布林選項，型別不符時採預設值
+ *
+ * @param {Object} opt 輸入設定物件
+ * @param {String} key 輸入鍵名字串
+ * @param {Boolean} def 輸入預設值布林值
+ * @returns {Boolean} 回傳選項布林值
+ * @example
+ *
+ * import { getOptBool } from './src/getOpt.mjs'
+ *
+ * console.log(getOptBool({ parse: false }, 'parse', true), getOptBool({ parse: 'x' }, 'parse', true))
+ * // => false true
+ *
+ */
+function getOptBool(opt, key, def) {
+    return _pick(opt, key, def, isbol, cbol)
+}
+
+
+/**
+ * 由設定物件取正整數選項，型別不符時採預設值
+ *
+ * @param {Object} opt 輸入設定物件
+ * @param {String} key 輸入鍵名字串
+ * @param {Integer} def 輸入預設值整數
+ * @returns {Integer} 回傳選項整數
+ * @example
+ *
+ * import { getOptPInt } from './src/getOpt.mjs'
+ *
+ * console.log(getOptPInt({ timeoutMs: 3000 }, 'timeoutMs', 15000), getOptPInt({ timeoutMs: 0 }, 'timeoutMs', 15000))
+ * // => 3000 15000
+ *
+ */
+function getOptPInt(opt, key, def) {
+    return _pick(opt, key, def, (v) => ispint(v, OPT_SAFE) &amp;&amp; _inTimerRange(v), cint)
+}
+
+
+/**
+ * 由設定物件取非負整數選項，型別不符時採預設值
+ *
+ * @param {Object} opt 輸入設定物件
+ * @param {String} key 輸入鍵名字串
+ * @param {Integer} def 輸入預設值整數
+ * @returns {Integer} 回傳選項整數
+ * @example
+ *
+ * import { getOptP0Int } from './src/getOpt.mjs'
+ *
+ * console.log(getOptP0Int({ maxRetries: 0 }, 'maxRetries', 5), getOptP0Int({ maxRetries: -1 }, 'maxRetries', 5))
+ * // => 0 5
+ *
+ */
+function getOptP0Int(opt, key, def) {
+    return _pick(opt, key, def, (v) => isp0int(v, OPT_SAFE) &amp;&amp; _inTimerRange(v), cint)
+}
+
+
+/**
+ * 由設定物件取非空字串選項，型別不符時採預設值
+ *
+ * @param {Object} opt 輸入設定物件
+ * @param {String} key 輸入鍵名字串
+ * @param {String} def 輸入預設值字串
+ * @returns {String} 回傳選項字串
+ * @example
+ *
+ * import { getOptStr } from './src/getOpt.mjs'
+ *
+ * console.log(getOptStr({ method: 'curl' }, 'method', 'auto'), getOptStr({ method: '' }, 'method', 'auto'))
+ * // => 'curl' 'auto'
+ *
+ */
+function getOptStr(opt, key, def) {
+    return _pick(opt, key, def, isestr, null)
+}
+
+
+/**
+ * 由設定物件取陣列選項，型別不符時採預設值
+ *
+ * @param {Object} opt 輸入設定物件
+ * @param {String} key 輸入鍵名字串
+ * @param {Array} def 輸入預設值陣列
+ * @returns {Array} 回傳選項陣列
+ * @example
+ *
+ * import { getOptArr } from './src/getOpt.mjs'
+ *
+ * console.log(getOptArr({ adapters: [1] }, 'adapters', []), getOptArr({ adapters: 'x' }, 'adapters', []))
+ * // => [1] []
+ *
+ */
+function getOptArr(opt, key, def) {
+    return _pick(opt, key, def, isarr, null)
+}
+
+
+export {
+    getOptBool,
+    getOptPInt,
+    getOptP0Int,
+    getOptStr,
+    getOptArr
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Thu Sep 10 2026 18:00:07 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>getRetryWaitMs.mjs - Documentation</title>
+    <title>withRetry.mjs - Documentation</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -35,7 +35,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">getRetryWaitMs.mjs</h1>
+    <h1 class="page-title">withRetry.mjs</h1>
     
 
     
@@ -45,48 +45,81 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>import ispint from 'wsemi/src/ispint.mjs'
-
-
-//重試政策: 本模組為其單一擁有者
-//預設重試次數(含初始共執行DEFAULT_MAX_RETRIES+1次)
-let DEFAULT_MAX_RETRIES = 5
-
-//線性退避之初始與上限毫秒
-let INITIAL_WAIT_MS = 3000
-let MAX_WAIT_MS = 15000
+            <pre class="prettyprint source linenums"><code>import delay from 'wsemi/src/delay.mjs'
+import getRetryWaitMs from './getRetryWaitMs.mjs'
 
 
 /**
- * 取得重試前之線性退避等待毫秒
+ * 以線性退避重試單次嘗試函數，直到成功或次數用盡
  *
- * 第n次失敗後等待n*3000毫秒，上限15000毫秒，即3000、6000、9000、12000、15000、15000...
+ * 三個抓取器的重試骨架原本各寫一份（含退避訊息共四處），本函數為其唯一實作。
  *
- * @param {Integer} attempt 輸入第幾次嘗試之正整數，由1起算
- * @returns {Integer} 回傳等待毫秒整數
+ * 單次嘗試函數回傳`{ok:true,...}`表示成功，回傳`{ok:false,...}`表示失敗；
+ * 失敗時以`retryable:false`表示該錯誤不應重試（如HTTP 4xx、內容過短），
+ * 未指定則視為可重試。抓取器自身的欄位（httpCode、html等）原樣帶回，本函數不解讀
+ *
+ * @param {Function} attemptFn 輸入單次嘗試async函數，簽章為(attempt)，回傳{ok,retryable,message,...}
+ * @param {Object} cfg 輸入設定物件
+ * @param {Integer} cfg.maxRetries 輸入最大重試次數整數，含初始共執行maxRetries+1次
+ * @param {String} cfg.tag 輸入退避訊息之來源標籤字串
+ * @param {Boolean} [cfg.showLog=true] 輸入是否輸出退避訊息布林值，預設true
+ * @returns {Promise} 回傳Promise，resolve回傳單次嘗試函數之最後結果並附加attempts實際執行次數
  * @example
  *
- * import getRetryWaitMs from './src/getRetryWaitMs.mjs'
+ * import withRetry from './src/withRetry.mjs'
  *
- * console.log(getRetryWaitMs(1), getRetryWaitMs(2), getRetryWaitMs(5), getRetryWaitMs(99))
- * // => 3000 6000 15000 15000
+ * let test = async () => {
+ *
+ *     let n = 0
+ *     let r = await withRetry(async () => {
+ *         n += 1
+ *         return n &lt; 2 ? { ok: false, message: 'boom' } : { ok: true, value: n }
+ *     }, { maxRetries: 3, tag: 'demo' })
+ *     console.log(r.ok, r.value, r.attempts)
+ *     // => true 2 2
+ *
+ * }
+ * await test()
+ *     .catch((err) => {
+ *         console.log(err)
+ *     })
  *
  */
-function getRetryWaitMs(attempt) {
+async function withRetry(attemptFn, cfg) {
 
-    //check
-    //attempt由1起算, 0不在契約內。此處須用ispint而非isp0int——
-    //isp0int允許0會使getRetryWaitMs(0)回0, 若日後共用retry runner採零起算即成熱迴圈
-    if (!ispint(attempt)) {
-        return INITIAL_WAIT_MS
+    let maxRetries = cfg.maxRetries
+    let tag = cfg.tag
+    let showLog = cfg.showLog !== false
+
+    let r = null
+    for (let attempt = 1; attempt &lt;= maxRetries + 1; attempt++) {
+
+        r = await attemptFn(attempt)
+
+        if (r.ok) {
+            return { ...r, attempts: attempt }
+        }
+
+        //不可重試之錯誤, 或次數已用盡: 直接回最後結果
+        if (r.retryable === false || attempt > maxRetries) {
+            return { ...r, attempts: attempt }
+        }
+
+        //退避訊息之唯一實作處; detail由抓取器提供, 未給時取其錯誤訊息
+        let ms = getRetryWaitMs(attempt)
+        if (showLog) {
+            let detail = r.logDetail || ('error: ' + (r.message || 'unknown'))
+            process.stderr.write(`[${tag}] ${detail}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
+        }
+        await delay(ms)
     }
 
-    return Math.min(INITIAL_WAIT_MS * attempt, MAX_WAIT_MS)
+    //maxRetries由getOptP0Int保證為非負整數, 故迴圈必於內部回傳; 此行為型別完整性之防線
+    return { ...r, attempts: maxRetries + 1 }
 }
 
 
-export { DEFAULT_MAX_RETRIES }
-export default getRetryWaitMs
+export default withRetry
 </code></pre>
         </article>
     </section>
