@@ -243,7 +243,7 @@ describe('findAdapter', function() {
             assert.strict.deepEqual(r, rr)
         })
 
-        it('內建adapters涵蓋gelonghui、bloomberg與msn', async function() {
+        it('內建adapters涵蓋gelonghui、bloomberg與msn(文章與影片頁)', async function() {
             let r = []
             for (let u of [
                 'https://www.gelonghui.com/p/123456',
@@ -251,30 +251,33 @@ describe('findAdapter', function() {
                 'https://www.bloomberg.com/opinion/articles/2026-01-01/abc',
                 'https://www.bloomberg.com/features/2026-story/',
                 'https://www.msn.com/zh-tw/news/other/abc/ar-AA2bZm9d',
+                'https://www.msn.com/en-us/video/news/abc/vi-AA2bYtCB',
             ]) {
                 r.push((await findAdapter(u, defaultAdapters)).adapter.id)
             }
-            let rr = ['gelonghui', 'bloomberg', 'bloomberg', 'bloomberg', 'msn']
+            let rr = ['gelonghui', 'bloomberg', 'bloomberg', 'bloomberg', 'msn', 'msn']
             assert.strict.deepEqual(r, rr)
         })
 
         it('內建adapters未命中之網址回傳miss, 由Readability接手', async function() {
 
-            //msn之非文章頁(首頁、頻道頁)與影片頁(vi-)不在msn adapter範圍, 維持既有之階梯流程
+            //msn之非內容頁(首頁、頻道頁、影片瀏覽頁)與無來源之gm型不在msn adapter範圍, 維持既有之階梯流程
             let r = await types([
                 'https://example.com/',
                 'https://www.bloomberg.com/markets',
                 'https://www.msn.com/zh-tw/news',
-                'https://www.msn.com/en-us/video/x/vi-AA1abcde',
+                'https://www.msn.com/en-us/video/browse/mostwatchedtoday',
+                'https://www.msn.com/en-us/x/gm-AA1abcde',
+                'https://www.msn.com/ar-ae/news',
             ], (u) => findAdapter(u, defaultAdapters))
-            let rr = ['miss', 'miss', 'miss', 'miss']
+            let rr = ['miss', 'miss', 'miss', 'miss', 'miss', 'miss']
             assert.strict.deepEqual(r, rr)
         })
 
-        it('msn命中時以match回傳之locale與id作為ctx', async function() {
+        it('msn命中時以match回傳之kind與id作為ctx', async function() {
             let t = await findAdapter('https://www.msn.com/zh-tw/news/other/abc/ar-AA2bZm9d?ocid=BingNewsSerp', defaultAdapters)
             let r = [t.adapter.id, t.ctx]
-            let rr = ['msn', { locale: 'zh-tw', id: 'AA2bZm9d' }]
+            let rr = ['msn', { kind: 'ar', id: 'AA2bZm9d' }]
             assert.strict.deepEqual(r, rr)
         })
 

@@ -25,11 +25,21 @@ let collectReasons = () => {
             let s = line.trim()
             return !s.startsWith('//') && !s.startsWith('*')
         }).join('\n')
-        for (let m of code.matchAll(/reason:\s*'([a-z-]+)'/g)) {
-            if (!out.has(m[1])) {
-                out.set(m[1], [])
+        let add = (v) => {
+            if (!out.has(v)) {
+                out.set(v, [])
             }
-            out.get(m[1]).push(fn)
+            out.get(v).push(fn)
+        }
+        for (let m of code.matchAll(/reason:\s*'([a-z-]+)'/g)) {
+            add(m[1])
+        }
+
+        //第二種發出形態: 先以REASON_*常數命名, 再於控制流中比對與發出(runPlan)。
+        //守門此前看不見此形態——internal-address由字面量改為常數後即自掃描消失(複審指出),
+        //與經驗一之16同型: 守門認不出本專案的一種書寫形態, 等於對該形態沒有守門
+        for (let m of code.matchAll(/\bREASON_[A-Z_]+\s*=\s*'([a-z-]+)'/g)) {
+            add(m[1])
         }
     }
     return out
@@ -45,6 +55,15 @@ describe('reason值域之單一權威', function() {
         let unlisted = [...used.keys()].filter((v) => !Object.hasOwn(REASONS, v)).sort()
         let r = unlisted
         let rr = []
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('以REASON_常數發出之歸因亦在掃描範圍內', function() {
+
+        //runPlan以常數形態發出internal-address等四值; 掃描若只認字面量, 這些發出站點就不受守門
+        let used = collectReasons()
+        let r = ['internal-address', 'adapter-fetch-error', 'adapter-fetch-skip', 'fetcher-error'].map((v) => (used.get(v) || []).includes('runPlan.mjs'))
+        let rr = [true, true, true, true]
         assert.strict.deepEqual(r, rr)
     })
 

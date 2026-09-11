@@ -173,6 +173,28 @@ describe('內容之最終網址', function() {
             assert.strict.deepEqual(r, rr)
         })
 
+        it('多階計畫下於首階即收攤, 不以其餘抓取器對同一推導網址重發請求', async function() {
+
+            //複審以突變測試指出: 此格此前只由單階計畫之測試涵蓋, 收攤與續走在單階下結果相同而分辨不出;
+            //若續走, headless/headed/camofox會對同一推導網址各再發一次請求(跟隨轉址到內網)。
+            //被fake掉的是四個抓取器: curl取回內容但回報之最終網址為內網
+            let n = { headless: 0 }
+            let html = bodyOf('b', 'B')
+            let fs = {
+                curl: async () => ({ method: 'curl', status: 'success', html, finalUrl: 'http://127.0.0.1/latest/meta-data/' }),
+                playwrightHeadless: async () => {
+                    n.headless += 1
+                    return { method: 'playwright-headless', status: 'success', html }
+                },
+                playwrightHead: async () => ({ method: 'playwright-headed', status: 'success', html }),
+                camofox: async () => ({ method: 'camofox', status: 'success', html }),
+            }
+            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, _depth: 1 })
+            let r = [t.status, t.reason, t.attempts.length, n.headless]
+            let rr = ['error', 'internal-address', 1, 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
         it('呼叫端明確給定之網址不受此層影響', async function() {
 
             //本層只把關**套件自己推導出來**的網址。呼叫端要抓自己的內網服務是正當用法,

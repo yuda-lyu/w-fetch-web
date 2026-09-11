@@ -223,6 +223,162 @@ describe('adapter之fetch掛點', function() {
 
     })
 
+    describe('fallback涵蓋整個adapter階', function() {
+
+        //fallback此前只在fetch失敗出口生效; fetch成功後被判識擋下或解析失敗仍無條件續走,
+        //auto下白跑三層瀏覽器, 且最終歸因被末階蓋掉。由安裝方提案以替身重現、本套件以真實msn影片頁
+        //(逐字稿31字)重現後修正。宣告fallback:false說的是「對這個站台, 爬蟲拿不到」,
+        //這句話不因失敗發生在fetch、判識或解析而改變。去留決定之唯一實作為runPlan之_mayEscalate。
+        //
+        //被fake掉的是: 四個抓取器(opt._fetchers, 只計次數)與adapter之fetch來源(直接回傳固定HTML); 判識與解析為真
+        let ch = '<html><head><title>Just a moment...</title></head><body><p>x</p></body></html>'
+        let short = '<html><head><title>t</title></head><body><p>short</p></body></html>'
+        let zero = { curl: 0, headless: 0, headed: 0, camofox: 0 }
+
+        it('fetch失敗之紀錄帶adapterId, 收攤時頂層亦帶', async function() {
+
+            //頂層帶adapterId是fetchWeb JSDoc既有之承諾, 但finalize之錯誤分支此前未輸出(複審指出);
+            //可收攤之出口由一個增為三個後, 只讀頂層的呼叫端須知道是哪一個adapter決定的
+            let { t } = await run(async () => ({ status: 'error', reason: 'my-api-down', message: 'HTTP 503' }), { fallback: false })
+            let r = [t.status, t.adapterId, map(t.attempts, (a) => [a.method, a.status, a.reason, a.adapterId])]
+            let rr = ['error', 'api', [['adapter', 'failed', 'my-api-down', 'api']]]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('落回後階梯耗盡者頂層不帶adapterId: 最後決定者不是adapter', async function() {
+            let n = { curl: 0, headless: 0, headed: 0, camofox: 0 }
+            let mkFail = (k, method) => async () => {
+                n[k] += 1
+                return { method, status: 'error', reason: 'http-error', message: 'HTTP 500' }
+            }
+            let fs = { curl: mkFail('curl', 'curl'), playwrightHeadless: mkFail('headless', 'playwright-headless'), playwrightHead: mkFail('headed', 'playwright-headed'), camofox: mkFail('camofox', 'camofox') }
+            let adapters = [{ id: 'api', match: /example\.com/, fetch: async () => ({ status: 'error', reason: 'my-api-down', message: 'x' }) }]
+            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters })
+            let r = [t.status, t.reason, Object.prototype.hasOwnProperty.call(t, 'adapterId'), t.attempts.length, t.attempts[0].adapterId]
+            let rr = ['error', 'http-error', false, 5, 'api']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('去留依出口判斷而非reason字串: 自報套件保留名不改變去留', async function() {
+
+            //本輪第一版以reason為鍵反推出口(internal-address→收攤等), 但reason在fetch與parse出口是呼叫端的自由值;
+            //雙複審各自以替身重現「自報即改寫去留」。skip與契約錯誤兩個保留名只在fetch出口有語意
+            let missIf = (reason) => (html) => (html === htmlFromApi ? { success: false, reason, message: 'x' } : { success: true, title: 'BY-SCRAPE', content })
+            let a = await run(okFetch, { parse: missIf('internal-address') })
+            let b = await run(okFetch, { parse: missIf('adapter-fetch-error') })
+            let c = await run(async () => ({ status: 'error', reason: 'internal-address', message: 'x' }))
+            let d = await run(okFetch, { fallback: false, parse: () => ({ success: false, reason: 'adapter-fetch-skip', message: 'x' }) })
+            let r = [
+                [a.t.status, a.t.method, a.t.title],
+                [b.t.status, b.t.method, b.t.title],
+                [c.t.status, c.t.method, c.t.title],
+                [d.t.status, d.t.reason, d.n.curl],
+            ]
+            let rr = [
+                ['success', 'curl', 'BY-SCRAPE'],
+                ['success', 'curl', 'BY-SCRAPE'],
+                ['success', 'curl', 'BY-SCRAPE'],
+                ['error', 'adapter-fetch-skip', 0],
+            ]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('fallback:false之adapter回skip後, 爬蟲階之失敗照舊續走', async function() {
+
+            //skip之後的各階都不是adapter階, 其失敗一律續走(內建四階之失敗本來就是升級的理由)
+            let { fs, n } = mkFetchers()
+            fs.curl = async () => {
+                n.curl += 1
+                return { method: 'curl', status: 'error', reason: 'http-error', message: 'HTTP 500' }
+            }
+            let adapters = [{ id: 'api', match: /example\.com/, fetch: async () => ({ status: 'skip' }), fallback: false }]
+            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters })
+            let r = [t.status, t.method, n.curl, n.headless]
+            let rr = ['success', 'playwright-headless', 1, 1]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('只有parse掛點之adapter沒有adapter階, fallback對它無作用(文件化之限制)', async function() {
+            let { fs, n } = mkFetchers()
+            let adapters = [{ id: 'p', match: /example\.com/, parse: () => ({ success: false, reason: 'my-miss', message: 'x' }), fallback: false }]
+            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters })
+            let r = [t.status, t.reason, n]
+            let rr = ['error', 'my-miss', { curl: 1, headless: 1, headed: 1, camofox: 1 }]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('與其餘選項組合下各出口之收攤皆成立', async function() {
+
+            //method單階×解析出口; opt.inspect:false×解析出口; opt.parse:false×判識出口; _depth>0(推導網址)×判識出口
+            let a = await run(okFetch, { fallback: false, parse: () => ({ success: false, reason: 'my-miss', message: 'x' }) }, { method: 'curl' })
+            let b = await run(async () => ({ status: 'success', html: short }), { fallback: false, parse: undefined }, { inspect: false })
+            let c = await run(async () => ({ status: 'success', html: ch }), { fallback: false }, { parse: false })
+            let d = await run(async () => ({ status: 'success', html: ch }), { fallback: false }, { _depth: 1 })
+            let r = [[a.t.reason, a.n.curl], [b.t.reason, b.n.curl], [c.t.reason, c.n.curl], [d.t.reason, d.n.curl]]
+            let rr = [['my-miss', 0], ['empty-content', 0], ['captcha', 0], ['captcha', 0]]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('fetch成功但被判識擋下時亦收攤, 歸因為判識型別', async function() {
+            let { t, n } = await run(async () => ({ status: 'success', html: ch }), { fallback: false })
+            let r = [t.status, t.reason, map(t.attempts, (a) => [a.method, a.status, a.type, a.adapterId]), n]
+            let rr = ['error', 'captcha', [['adapter', 'blocked', 'captcha', 'api']], zero]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('fetch成功但adapter之parse失敗時亦收攤, 保留其自報歸因', async function() {
+            let { t, n } = await run(okFetch, { fallback: false, parse: () => ({ success: false, reason: 'my-miss', message: 'no data' }) })
+            let r = [t.status, t.reason, t.message, map(t.attempts, (a) => [a.method, a.status, a.reason]), n]
+            let rr = ['error', 'my-miss', 'no data', [['adapter', 'blocked', 'my-miss']], zero]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('只有fetch之adapter, Readability取不出足量正文時亦收攤', async function() {
+            let { t, n } = await run(async () => ({ status: 'success', html: short }), { fallback: false, parse: undefined })
+            let r = [t.status, t.reason, n]
+            let rr = ['error', 'empty-content', zero]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('未宣告時判識擋下與解析失敗皆照舊落回', async function() {
+
+            //預設安全: 忘記宣告的後果是「還抓得到內容, 只是走了爬蟲」, 且attempts留有adapter階之blocked紀錄
+            let a = await run(async () => ({ status: 'success', html: ch }))
+            let b = await run(okFetch, {
+                parse: (html) => (html === htmlFromApi ? { success: false, reason: 'my-miss', message: 'x' } : { success: true, title: 'BY-SCRAPE', content }),
+            })
+            let r = [
+                [a.t.status, a.t.method, a.n.curl, map(a.t.attempts, (x) => [x.status, x.reason])],
+                [b.t.status, b.t.method, b.t.title, b.n.curl, map(b.t.attempts, (x) => [x.status, x.reason])],
+            ]
+            let rr = [
+                ['success', 'curl', 1, [['blocked', 'captcha'], ['success', undefined]]],
+                ['success', 'curl', 'BY-SCRAPE', 1, [['blocked', 'my-miss'], ['success', undefined]]],
+            ]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('opt.method指定單階時規則相同: 收攤即不動用該階', async function() {
+            let { t, n } = await run(async () => ({ status: 'success', html: ch }), { fallback: false }, { method: 'curl' })
+            let r = [t.status, t.reason, n.curl]
+            let rr = ['error', 'captcha', 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('推導網址複驗至內網時, adapter階之紀錄亦帶adapterId(與其餘紀錄對稱)', async function() {
+
+            //此格此前漏寫adapterId: 同一規則手寫多處必有一處漏, 現由_runStep之stamp一次決定。
+            //內網複驗不分階一律收攤, 不受fallback拘束: 換抓取器不會讓內網位址變成外網
+            let { fs, n } = mkFetchers()
+            let adapters = [{ id: 'api', match: /example\.com/, fetch: async () => ({ status: 'success', html: htmlFromApi, finalUrl: 'http://127.0.0.1/secret' }) }]
+            let t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=https%3A%2F%2Fexample.com%2Fa', { showLog: false, _fetchers: fs, adapters })
+            let r = [t.status, t.reason, t.url, map(t.attempts, (a) => [a.method, a.adapterId, a.status, a.type, a.reason]), n]
+            let rr = ['error', 'internal-address', 'https://example.com/a', [['adapter', 'api', 'blocked', 'empty', 'internal-address']], zero]
+            assert.strict.deepEqual(r, rr)
+        })
+
+    })
+
     describe('與其餘選項之關係', function() {
 
         it('opt.method非auto時fetch照跑, 落回對象即該階', async function() {

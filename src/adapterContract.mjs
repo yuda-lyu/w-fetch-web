@@ -18,7 +18,8 @@ import { MIN_CONTENT } from './constants.mjs'
 //  parse    函數，簽章為(html, url, ctx)；與fetch至少須有其一
 //  fetch    函數，簽章為(url, opt, ctx)；與parse至少須有其一
 //  inspect  選填布林，false表**此adapter命中時**不做原始內容判識
-//  fallback 選填布林，預設true；false表fetch失敗時不落回階梯
+//  fallback 選填布林，預設true；false表**此adapter階**以任何方式失敗皆不落回階梯（見下）。
+//           只對具fetch掛點之adapter有意義：沒有fetch掛點就沒有adapter階，此欄無作用
 //
 //── fetch掛點：三個掛點分屬管線的三個階段 ──
 //  fetch    取得內容    ——「這次要不要爬」
@@ -36,6 +37,21 @@ import { MIN_CONTENT } from './constants.mjs'
 //
 //'skip'獨立於fallback之理由：match只看得到網址，而「我的來源有沒有這一篇」常常要查了才知道。
 //既然這是match表達不了的資訊，它就不是「失敗」而是「我不該被算進來」
+//
+//── fallback之涵蓋範圍：整個adapter階，不只fetch ──
+//adapter階受fallback管的失敗出口有三個：fetch回傳失敗、fetch成功但被判識擋下、fetch成功但解析未取得足量正文。
+//fallback:false時三者**皆**收攤，並以該出口之reason回報（判識型別、empty-content、parse-error或自報值），
+//頂層結果另帶adapterId。第四個出口（套件自行推導之網址於抓取後解析至內網）不分階一律收攤，不受此欄拘束。
+//理由：宣告fallback:false說的是「對這個站台，爬蟲拿不到」，這句話不因失敗發生在哪一段而改變；
+//而落回的代價是白跑其餘各階（auto下為三層瀏覽器）、且最終歸因被末階蓋掉。
+//此前它只在fetch失敗出口生效，另兩個出口無條件續走——由安裝方之提案以替身重現、本套件以真實msn影片頁
+//（逐字稿31字）重現後修正。
+//
+//去留決定之唯一實作在runPlan之_mayEscalate，依**出口**判斷而非reason字串：reason在fetch與parse出口是
+//呼叫端的自由值（本檔輸出契約明寫自報值原樣保留），拿它反推出口會讓自報值改寫去留。
+//只有兩個保留名在fetch出口有固定語意，呼叫端自報它們亦得其登記語意：
+//  'adapter-fetch-error'  契約錯誤，恆收攤    'adapter-fetch-skip'  不適用，恆續走
+//只有parse掛點之adapter不產生adapter階，其parse失敗恆續走階梯（換抓取器可能得到不同html），此欄對它無作用
 //
 //── fetch與opt.method之關係 ──
 //opt.method非'auto'時fetch**照跑**，其後的落回對象就是method所指定的那一階。
@@ -114,10 +130,11 @@ function isValidAdapter(adapter) {
 
 
 /**
- * 判定命中之adapter於fetch失敗時是否落回階梯
+ * 判定命中之adapter於其adapter階失敗時（fetch失敗、被判識擋下或解析未取得足量正文）是否落回階梯
  *
  * 只認嚴格false為「不落回」，其餘值(含未給)一律落回，使忘記宣告的後果偏保守——
- * 忘了宣告的結果是「還是抓得到內容，只是走了爬蟲」，不是「什麼都沒有」
+ * 忘了宣告的結果是「還是抓得到內容，只是走了爬蟲」，不是「什麼都沒有」。
+ * 此欄之涵蓋範圍與例外見檔頭「fallback之涵蓋範圍」
  *
  * @param {Object|null} adapter 輸入命中之adapter物件
  * @returns {Boolean} 回傳是否落回之布林值

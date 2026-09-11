@@ -62,7 +62,7 @@ let REASONS = Object.freeze({
     //兩者刻意分名: 前者要呼叫端去修自己的adapter, 後者是套件或環境的問題, 處置不同
     'adapter-fetch-error': 'adapter之fetch拋錯或回傳形狀不合契約(顯性回報, 不落回階梯)',
     'adapter-fetch-skip': 'adapter之fetch表明此網址不適用, 改由階梯抓取',
-    'adapter-fetch-miss': 'adapter之fetch取得回應但其形狀不合預期(非JSON、非文章型或無正文), 與adapter-parse-miss對稱',
+    'adapter-fetch-miss': 'adapter之fetch取得回應但其形狀不合預期(非JSON、非物件或無正文), 與adapter-parse-miss對稱',
     'fetcher-error': '抓取器拋錯或回傳形狀不合契約',
     'internal-address': '套件自行推導之網址(轉址參數提取)於抓取後解析至內網或保留位址',
 

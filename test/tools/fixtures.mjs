@@ -69,6 +69,28 @@ let msnApiOk = {
         '<p>分析師指出，流動性溢價只有在不需要流動性時才成立，這是一個結構性的矛盾。</p>').repeat(8),
 }
 
+//影片頁(vi-)之回應形狀取自2026-09-12實抓6篇真實影片(皆HTTP 200):
+//type為'video', body為逐字稿(HTML或純文字字串, 6篇為31~8446字), 另有videoMetadata等欄(與解析無關, 內容略去)。
+//文字為自擬, 只保留形狀
+let URL_MSN_VIDEO = 'https://www.msn.com/en-us/video/news/some-clip/vi-AA2bYtCB'
+
+let msnApiVideo = {
+    title: '市場週報：本週三大焦點',
+    sourceHref: 'https://example.com/source-video',
+    type: 'video',
+    provider: { name: '測試來源媒體' },
+    videoMetadata: {},
+    body: ('<p>大家好，本週市場焦點在於私募信貸的流動性折價，多家機構重新評估其估值模型。</p>' +
+        '<p>分析師指出，流動性溢價只有在不需要流動性時才成立，這是一個結構性的矛盾。</p>').repeat(6),
+}
+
+//**真實production值**, 不是構造的: 2026-09-12實抓下列影片頁, API回200、type='video',
+//逐字稿原文僅31字(低於MIN_CONTENT)。它是「API成功但正文不足」這一格在真實世界的樣子——
+//此前套件在此格會續跑三層瀏覽器(43秒)且歸因被蓋成camofox-empty
+let URL_MSN_VIDEO_SHORT = 'https://www.msn.com/en-us/video/peopleandplaces/compilation-of-funny-videos/vi-AA1OIlxP'
+
+let msnApiVideoShort = { ...msnApiVideo, title: 'Compilation of Funny Videos', body: 'None. Let\'s go. None. Go. None.' }
+
 
 export {
     gelonghuiBody,
@@ -78,5 +100,9 @@ export {
     htmlBloomberg,
     storyOk,
     URL_MSN,
-    msnApiOk
+    msnApiOk,
+    URL_MSN_VIDEO,
+    msnApiVideo,
+    URL_MSN_VIDEO_SHORT,
+    msnApiVideoShort
 }

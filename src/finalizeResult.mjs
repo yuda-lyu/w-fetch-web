@@ -51,7 +51,7 @@ function summarizeFail(r) {
  * 彙整fetchWeb之最終回傳結果
  *
  * 成功且已解析時輸出title與content，成功但未解析時輸出html；
- * 失敗時輸出message，並於有失敗歸因時附上reason
+ * 失敗時輸出message，並於有失敗歸因時附上reason；內容經adapter之fetch掛點取得、或於該階收攤時，另帶adapterId
  *
  * @param {String} url 輸入網址字串
  * @param {Object} result 輸入內部結構之結果物件
@@ -113,6 +113,13 @@ function finalize(url, result, attempts) {
     }
     if (isestr(result.reason)) {
         out.reason = result.reason
+    }
+
+    //於adapter階收攤者另帶adapterId, 與成功結果對稱。fetchWeb之JSDoc此前即宣稱「紀錄與頂層皆另帶」,
+    //但本分支未輸出(複審指出); adapter階可收攤之出口由一個增為三個後, 只讀頂層的呼叫端須知道是哪一個adapter決定的。
+    //階梯耗盡而失敗者由runPlan不給此欄——最後決定者不是adapter
+    if (isestr(result.adapterId)) {
+        out.adapterId = result.adapterId
     }
     return out
 }

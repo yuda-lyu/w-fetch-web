@@ -14,14 +14,18 @@ import fetchWebByPlaywrightHead from './fetchWebByPlaywrightHead.mjs'
 import fetchWebByCamofox from './fetchWebByCamofox.mjs'
 
 
-//對外公開之方法名值域, 供_methodOf把關抓取器自報值
 //adapter階之step.key; 該階之抓取函數於執行期才由命中之adapter取得, 故不在FETCHER_BY_KEY內
 let STEP_ADAPTER = 'adapter'
 
-//adapter之fetch掛點所產生之三種歸因
+//本檔須據以**分支或發出**之歸因: adapter之fetch掛點所產生之三種, 與推導網址複驗之一種。
+//值域之唯一權威仍為constants之REASONS(unit-reasons之守門亦掃描此常數形態)
 let REASON_ADAPTER_FETCH_ERROR = 'adapter-fetch-error'
 let REASON_ADAPTER_FETCH_SKIP = 'adapter-fetch-skip'
 let REASON_FETCHER_ERROR = 'fetcher-error'
+let REASON_INTERNAL_ADDRESS = 'internal-address'
+
+//各失敗出口於過程訊息中之動詞, 以_runStep回報之stage為鍵
+let FAIL_VERB = Object.freeze({ fetch: 'failed', guard: 'blocked', inspect: 'blocked', parse: 'parse failed' })
 
 
 //自網址取主機名; 解不出者回空字串, 由isInternalHost以「非字串視為內網」之預設處置
@@ -35,6 +39,7 @@ function _hostOf(u) {
 }
 
 
+//對外公開之方法名值域, 供_methodOf把關抓取器自報值
 let KNOWN_METHODS = Object.freeze([METHOD_CURL, METHOD_PW_HEADLESS, METHOD_PW_HEADED, METHOD_CAMOFOX])
 
 
@@ -146,10 +151,155 @@ async function _applyParse(r, url, parse, hit, method, meta) {
 }
 
 
+//某階失敗後是否續走其餘階: 本決定之**唯一擁有者**
+//
+//此前fallback只在「adapter之fetch回傳失敗」這一個出口被諮詢, 而adapter階另有兩個失敗出口
+//(判識擋下、解析失敗)各自無條件續走——同一個旗標在三個出口中只有一個生效。
+//後果以內建msn adapter之真實影片頁重現(2026-09-12, vi-AA1OIlxP之逐字稿僅31字):
+//解析判empty-content後仍續跑headless/headed/camofox三層, 白耗43秒, 且最終歸因被末階
+//蓋成camofox-empty, 呼叫端看不出真正原因是「這篇本來就沒有正文」。
+//安裝方(tai-kns-trade)之提案以替身獨立重現同一缺口(建議擴充msn之adapter.md §4.3)。
+//
+//fallback之語意因此定為**整個adapter階**: 該階以任何方式失敗, 都由它決定續走或收攤。
+//理由: 落回的存在理由是「換一個抓取器可能拿得到」, 而adapter宣告fallback:false時說的正是
+//「對這個站台, 爬蟲拿不到」——這句話不因失敗發生在fetch、判識或解析而改變。
+//
+//**以出口(stage)判斷, 不以reason字串反推出口**。本函數第一版以reason為鍵(internal-address→收攤、
+//adapter-fetch-error→收攤、adapter-fetch-skip→續走), 但reason在fetch與parse出口是呼叫端的自由值
+//(README明寫自報值原樣保留): 呼叫端一自報這些名字, 去留就被資料改寫——雙複審以替身各自重現
+//(parse自報internal-address時未宣告fallback亦收攤; 自報adapter-fetch-skip時fallback:false亦續走)。
+//_runStep明明已回報出口, 再由reason反推是同一事實的第二種編碼, 而且是較弱的那種。
+//
+//決定表:
+//  guard        推導網址解析至內網, 不分階一律收攤: 換抓取器不會讓內網位址變成外網
+//  非adapter階  一律續走(內建四階之失敗本來就是升級的理由)
+//  fetch出口    以兩個保留名辨識通道, 呼叫端自報它們亦得其登記語意(見adapterContract):
+//                 契約錯誤(adapter-fetch-error)  恆收攤。呼叫端程式碼壞了, 靜默改用爬蟲會讓他永遠不知道
+//                 不適用(adapter-fetch-skip)      恆續走。那不是失敗, 是「我不該被算進來」
+//  其餘          依adapter之fallback
+//match拋錯之「恆收攤」發生在計畫產生前(fetchWeb), 不經本函數
+function _mayEscalate(step, hit, stage, reason) {
+    if (stage === 'guard') {
+        return false
+    }
+    if (step.key !== STEP_ADAPTER) {
+        return true
+    }
+    if (stage === 'fetch' && reason === REASON_ADAPTER_FETCH_ERROR) {
+        return false
+    }
+    if (stage === 'fetch' && reason === REASON_ADAPTER_FETCH_SKIP) {
+        return true
+    }
+    return wantsFallback(hit.adapter)
+}
+
+
+//執行單一階之完整管線: 抓取 → 內網複驗 → 判識 → 解析
+//
+//回傳{stage, rec, parsed, redirectHint}:
+//  stage         本階結束於哪一段: 'fetch'|'guard'|'inspect'|'parse'為失敗, 'done'為成功
+//  rec           本階之attempt紀錄, 由runPlan推入attempts
+//  parsed        成功時之解析結果(已帶把關後之method與adapterId), 失敗時為null
+//  redirectHint  本階判為轉址包裝頁, runPlan據此把後續Playwright階改為等待轉址
+//
+//本函數只回報「本階發生了什麼」, 不決定「接下來要不要續走」——該決定歸_mayEscalate單一擁有。
+//此前runPlan之迴圈內三個失敗出口各自手寫尾段(組紀錄、推入、記錄訊息、決定去留),
+//於是fallback只在其中一個尾段被諮詢, 另兩個尾段無條件continue。尾段收成一處後,
+//少寫一個出口會是語法上看得見的缺口, 而非行為上靜默的缺口。
+//
+//五個出口一律經done()產生回傳值, adapterId只在done內展開一次:
+//adapter階之紀錄與結果一律帶adapterId(method只說得出「來自某個adapter」, 說不出是哪一個,
+//而呼叫端可能同時註冊多個)。該欄此前於四處各自手寫、第五處(內網複驗)漏寫; 本輪第一版改為
+//五處各自展開stamp, 複審以突變測試證實其中一處拿掉後沒有測試會紅——形狀沒變, 只是換了寫法。
+//各出口只描述自己特有的欄位, 展開集中在done, 漏帶在語法上就不可能發生。
+//stamp展開於紀錄末尾, 使欄位順序與此前相同(adapterId在最後); 鍵序不是契約,
+//但以JSON字串比對快照的安裝方會看到差異, 沒有理由製造它
+async function _runStep(step, url, opt, parse, hit, redirect, isDerived, showLog) {
+
+    let stamp = step.key === STEP_ADAPTER ? { adapterId: hit.adapter.id } : {}
+    let done = (stage, rec, parsed = null, redirectHint = false) => ({
+        stage,
+        rec: { ...rec, ...stamp },
+        parsed: parsed ? { ...parsed, ...stamp } : null,
+        redirectHint,
+    })
+
+    let r = await _runFetcher(step, url, opt, redirect, hit)
+    let method = _methodOf(r, step)
+
+    //抓取失敗
+    if (!r.success) {
+        return done('fetch', { method, ...summarizeFail(r) })
+    }
+
+    //本次抓取之附帶資訊, 供解析器與adapter判斷
+    //finalUrl取抓取器回報之最終網址, 取不到時退回請求網址(而非留undefined,
+    //使下游不必各自處理缺值)
+    let meta = {
+        requestUrl: url,
+        finalUrl: isestr(r.finalUrl) ? r.finalUrl : url,
+        httpCode: r.httpCode,
+        method,
+        contentKind: r.contentKind,
+    }
+
+    //**套件自行推導之抓取, 抓完須以最終網址複驗內網位址**
+    //
+    //extractRedirectTarget只擋得住「提取出的目標本身是內網位址」。但被擋下的攻擊網址
+    //會改以原網址走一般流程, 而那些網址(linkedin/youtube轉址服務)恰好命中JS_REDIRECT分流,
+    //於是被派到一條**專門跟著轉址走**的路徑上(navigateWithRedirectWait刻意等到host脫離原host);
+    //curl階同理帶-L。亦即第一層擋掉的目標, 可由「讓站方自己轉過去」重新達成。
+    //
+    //只對_depth>0(即本次網址是套件自己推導出來的)複驗: 呼叫端明確給定之網址是他的決定,
+    //擋掉會誤傷正當用途——這條分界與isInternalHost檔頭所述一致
+    if (isDerived && isInternalHost(_hostOf(meta.finalUrl))) {
+        let msg = 'derived fetch resolved to an internal address: ' + meta.finalUrl
+        return done('guard', { method, status: 'blocked', type: DETECT_EMPTY, reason: REASON_INTERNAL_ADDRESS, message: msg })
+    }
+
+    //內容判識
+    //合成內容(Shadow DOM穿透或accessibility snapshot)之標籤結構已被剝除,
+    //故以contentKind告知判識器只比對semantic類判準, 詳見inspectHtml之DETECTORS註解
+    //命中之adapter可宣告inspect:false豁免判識, 使「自知如何解析該站台」的呼叫端
+    //不必為此關掉整次呼叫的判識; 只做關不做開, 理由見adapterContract。
+    //
+    //該宣告只關掉**內建**判識器: 它要豁免的是套件對全世界頁面所下的猜測,
+    //而呼叫端自己註冊的detectors是他的判準, 不歸adapter的站台知識管。
+    //此前兩者共用一個布林, adapter一宣告豁免就把呼叫端的判識器一起關掉——
+    //而detectorContract明寫「套件保證註冊的判識器一定會被比對」。
+    //step.inspect(即opt.inspect總開關)則兩邊都關: 那是呼叫端對本次呼叫的明確指示
+    let inspection = step.inspect
+        ? inspectHtml(r.html, { contentKind: r.contentKind, detectors: opt?.detectors, builtin: wantsInspect(hit?.adapter), showLog })
+        : PASS_INSPECTION
+    if (!inspection.pass) {
+
+        //reason與type同值並非冗餘: status為'blocked'的紀錄有三種來源(內網複驗、判識與解析失敗),
+        //形狀須一致, 呼叫端才能一律讀reason取得失敗歸因而不必先分辨是哪一種。
+        //先前判識這一路不帶reason, 與JSDoc及README所宣稱者不符
+        let rec = { method, status: 'blocked', type: inspection.type, reason: inspection.type, message: inspection.message }
+        return done('inspect', rec, null, inspection.type === DETECT_REDIRECT)
+    }
+
+    //解析
+    let parsed = await _applyParse(r, url, parse, hit, method, meta)
+    if (!parsed.success) {
+
+        //解析失敗(SPA與JS渲染頁面)視為empty
+        return done('parse', { method, status: 'blocked', type: DETECT_EMPTY, reason: parsed.reason, message: parsed.message || 'parse failed' })
+    }
+
+    //此處記的是抓取器取回之原始HTML長度, 與頂層contentLength(解析後之正文長度)不同,
+    //故另名htmlLength, 避免同名不同義
+    return done('done', { method, status: 'success', htmlLength: r.html.length }, parsed)
+}
+
+
 /**
  * 依序執行計畫中各階，首個取得可用內容者勝出
  *
- * 轉址旗標之後續變化由本函數擁有：某階被判為轉址包裝頁時，後續之Playwright階改以等待轉址方式抓取
+ * 轉址旗標之後續變化由本函數擁有：某階被判為轉址包裝頁時，後續之Playwright階改以等待轉址方式抓取。
+ * 各階之管線由_runStep執行，失敗後是否續走由_mayEscalate決定；本函數只負責串接
  *
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} opt 輸入設定物件
@@ -160,7 +310,6 @@ async function _applyParse(r, url, parse, hit, method, meta) {
  * @param {Boolean} redirect 輸入轉址旗標初值
  * @returns {Promise} 回傳Promise，resolve回傳對外之結果物件，本函數不會reject
  */
-//依序執行計畫中各階, 首個取得可用內容者勝出; 全數未果則彙整attempts回error
 async function runPlan(url, opt, parse, showLog, hit, plan, redirect) {
 
     let attempts = []
@@ -175,126 +324,27 @@ async function runPlan(url, opt, parse, showLog, hit, plan, redirect) {
             console.log('[fetchWeb] trying ' + tag + ' ...')
         }
 
-        let r = await _runFetcher(step, url, opt, redirect, hit)
-        let method = _methodOf(r, step)
-        let isAdapterStep = step.key === STEP_ADAPTER
+        let { stage, rec, parsed, redirectHint } = await _runStep(step, url, opt, parse, hit, redirect, isDerived, showLog)
+        attempts.push(rec)
 
-        //抓取失敗
-        if (!r.success) {
-            let rec = { method, ...summarizeFail(r) }
-            if (isAdapterStep) {
-                rec.adapterId = hit.adapter.id
-            }
-            attempts.push(rec)
-            if (showLog) {
-                console.warn('[fetchWeb] ' + tag + ' failed: ' + r.message)
-            }
-
-            //adapter階失敗後要不要續走其餘階, 分三個通道:
-            //  契約錯誤  不落回。與match拋錯同構——呼叫端程式碼壞了, 靜默改用爬蟲會讓他永遠不知道
-            //  '不適用'  恆落回, 不受fallback拘束。match只看得到網址, 而「我的來源有沒有這一篇」
-            //           常要查了才知道; 那不是失敗, 是「我不該被算進來」
-            //  顯性失敗  依adapter之fallback。預設落回, 使忘記宣告的後果偏保守(還抓得到, 只是走了爬蟲)
-            if (isAdapterStep) {
-                if (r.reason === REASON_ADAPTER_FETCH_ERROR) {
-                    return finalize(url, { success: false, reason: r.reason, message: r.message }, attempts)
-                }
-                if (r.reason !== REASON_ADAPTER_FETCH_SKIP && !wantsFallback(hit.adapter)) {
-                    return finalize(url, { success: false, reason: r.reason, message: r.message }, attempts)
-                }
-            }
-            continue
-        }
-
-        //本次抓取之附帶資訊, 供解析器與adapter判斷
-        //finalUrl取抓取器回報之最終網址, 取不到時退回請求網址(而非留undefined,
-        //使下游不必各自處理缺值)
-        let meta = {
-            requestUrl: url,
-            finalUrl: isestr(r.finalUrl) ? r.finalUrl : url,
-            httpCode: r.httpCode,
-            method,
-            contentKind: r.contentKind,
-        }
-
-        //**套件自行推導之抓取, 抓完須以最終網址複驗內網位址**
-        //
-        //extractRedirectTarget只擋得住「提取出的目標本身是內網位址」。但被擋下的攻擊網址
-        //會改以原網址走一般流程, 而那些網址(linkedin/youtube轉址服務)恰好命中JS_REDIRECT分流,
-        //於是被派到一條**專門跟著轉址走**的路徑上(navigateWithRedirectWait刻意等到host脫離原host);
-        //curl階同理帶-L。亦即第一層擋掉的目標, 可由「讓站方自己轉過去」重新達成。
-        //
-        //只對_depth>0(即本次網址是套件自己推導出來的)複驗: 呼叫端明確給定之網址是他的決定,
-        //擋掉會誤傷正當用途——這條分界與isInternalHost檔頭所述一致
-        if (isDerived && isInternalHost(_hostOf(meta.finalUrl))) {
-            let msg = 'derived fetch resolved to an internal address: ' + meta.finalUrl
-            attempts.push({ method, status: 'blocked', type: DETECT_EMPTY, reason: 'internal-address', message: msg })
-            if (showLog) {
-                console.warn('[fetchWeb] ' + tag + ' blocked: ' + msg)
-            }
-            return finalize(url, { success: false, reason: 'internal-address', message: msg }, attempts)
-        }
-
-        //內容判識
-        //合成內容(Shadow DOM穿透或accessibility snapshot)之標籤結構已被剝除,
-        //故以contentKind告知判識器只比對semantic類判準, 詳見inspectHtml之DETECTORS註解
-        //命中之adapter可宣告inspect:false豁免判識, 使「自知如何解析該站台」的呼叫端
-        //不必為此關掉整次呼叫的判識; 只做關不做開, 理由見adapterContract。
-        //
-        //該宣告只關掉**內建**判識器: 它要豁免的是套件對全世界頁面所下的猜測,
-        //而呼叫端自己註冊的detectors是他的判準, 不歸adapter的站台知識管。
-        //此前兩者共用一個布林, adapter一宣告豁免就把呼叫端的判識器一起關掉——
-        //而detectorContract明寫「套件保證註冊的判識器一定會被比對」。
-        //step.inspect(即opt.inspect總開關)則兩邊都關: 那是呼叫端對本次呼叫的明確指示
-        let inspection = step.inspect
-            ? inspectHtml(r.html, { contentKind: r.contentKind, detectors: opt?.detectors, builtin: wantsInspect(hit?.adapter), showLog })
-            : PASS_INSPECTION
-        if (!inspection.pass) {
-            //reason與type同值並非冗餘: status為'blocked'的紀錄有兩種來源(判識與解析失敗),
-            //兩者形狀須一致, 呼叫端才能一律讀reason取得失敗歸因而不必先分辨是哪一種。
-            //先前判識這一路不帶reason, 與JSDoc及README所宣稱者不符
-            let recBlk = { method, status: 'blocked', type: inspection.type, reason: inspection.type, message: inspection.message }
-            if (isAdapterStep) {
-                recBlk.adapterId = hit.adapter.id
-            }
-            attempts.push(recBlk)
-            if (showLog) {
-                console.warn('[fetchWeb] ' + tag + ' blocked: ' + inspection.message)
-            }
-
-            //判為轉址包裝頁者, 後續之Playwright階改以等待轉址方式抓取
-            if (inspection.type === DETECT_REDIRECT) {
-                redirect = true
-            }
-            continue
-        }
-
-        //解析
-        let parsed = await _applyParse(r, url, parse, hit, method, meta)
-        if (parsed.success && isAdapterStep) {
-
-            //method只說得出「來自某個adapter」, 說不出是哪一個, 而呼叫端可能同時註冊多個
-            parsed = { ...parsed, adapterId: hit.adapter.id }
-        }
-        if (parsed.success) {
-            //此處記的是抓取器取回之原始HTML長度, 與頂層contentLength(解析後之正文長度)不同,
-            //故另名htmlLength, 避免同名不同義
-            let rec = { method, status: 'success', htmlLength: r.html.length }
-            if (isAdapterStep) {
-                rec.adapterId = hit.adapter.id
-            }
-            attempts.push(rec)
+        if (stage === 'done') {
             return finalize(url, parsed, attempts)
         }
 
-        //解析失敗(SPA與JS渲染頁面)視為empty, 續下一階
-        let recFail = { method, status: 'blocked', type: DETECT_EMPTY, reason: parsed.reason, message: parsed.message || 'parse failed' }
-        if (isAdapterStep) {
-            recFail.adapterId = hit.adapter.id
-        }
-        attempts.push(recFail)
         if (showLog) {
-            console.warn('[fetchWeb] ' + tag + ' parse failed: ' + (parsed.message || 'empty content') + ' — escalating')
+            console.warn('[fetchWeb] ' + tag + ' ' + FAIL_VERB[stage] + ': ' + rec.message)
+        }
+
+        //判為轉址包裝頁者, 後續之Playwright階改以等待轉址方式抓取
+        if (redirectHint) {
+            redirect = true
+        }
+
+        //本階失敗後是否續走, 四個失敗出口一律問同一個地方。
+        //收攤時頂層亦帶adapterId(紀錄有才有): 收攤出口由一個增為三個之後,
+        //只讀頂層的呼叫端也該知道是哪一個adapter決定的; 階梯耗盡者則無, 最後決定者不是adapter
+        if (!_mayEscalate(step, hit, stage, rec.reason)) {
+            return finalize(url, { success: false, reason: rec.reason, message: rec.message, adapterId: rec.adapterId }, attempts)
         }
     }
 

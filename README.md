@@ -102,9 +102,9 @@ await test()
 | --- | --- | --- |
 | `success` | 取得並解析成功 | `method`、`htmlLength`（**原始HTML長度**，與頂層`contentLength`之正文長度不同） |
 | `failed` | 抓取本身失敗 | `method`、`reason`、`message` |
-| `blocked` | 取得內容但被判識或解析拒絕 | `method`、`type`、`reason`、`message` |
+| `blocked` | 取得內容但被判識或解析拒絕，或推導網址於抓取後解析至內網 | `method`、`type`、`reason`、`message` |
 
-經adapter之`fetch`掛點者其`method`為`'adapter'`，且該筆紀錄另帶`adapterId`。
+經adapter之`fetch`掛點者其`method`為`'adapter'`，且該筆紀錄另帶`adapterId`；成功結果與於adapter階收攤之失敗結果，頂層亦帶`adapterId`（落回後階梯耗盡者則無，最後決定者不是adapter）。
 
 #### url 與 finalUrl:
 結果之`url`是**本套件最後實際發出請求的網址**（含轉址參數提取後之目標）；內容若來自HTTP轉址或JS轉址之後的另一個網址，另帶`finalUrl`欄。一句話分辨：**`url`是我要了什麼，`finalUrl`是我拿到了什麼**。兩者相同時不輸出`finalUrl`，故呼叫端據「有沒有這個欄位」即知本次有無轉址。
@@ -134,13 +134,13 @@ await test()
 | `adapter-parse-miss` | adapter命中網域但頁面缺少其預期之結構 | 否 |
 | `adapter-fetch-error` | adapter之`fetch`拋錯或回傳形狀不合契約（不落回階梯） | 否，須修adapter |
 | `adapter-fetch-skip` | adapter之`fetch`表明此網址不適用，改由階梯抓取 | — |
-| `adapter-fetch-miss` | adapter之`fetch`取得回應但形狀不合預期（非JSON、非文章型或無正文），與`adapter-parse-miss`對稱 | 否 |
+| `adapter-fetch-miss` | adapter之`fetch`取得回應但形狀不合預期（非JSON、非物件或無正文），與`adapter-parse-miss`對稱 | 否 |
 | `fetcher-error` | 抓取器拋錯或回傳形狀不合契約 | 否 |
 | `internal-address` | 套件自行推導之網址（轉址參數提取）於抓取後解析至內網或保留位址 | 否 |
 | `captcha` | 判識為CAPTCHA或反爬蟲攔阻頁 | 否，該站需更高階抓取方法 |
 | `verify` | 判識為驗證頁 | 否 |
 | `redirect` | 判識為轉址包裝頁 | 否 |
-| `empty` | 判識為空內容，或解析未取得足量正文 | 否 |
+| `empty` | 判識為空內容，或解析未取得足量正文；推導網址複驗至內網之紀錄亦以此為`type`（其`reason`為`internal-address`） | 否 |
 | `unknown` | 無上游歸因可用之退路值 | — |
 
 後四者即`attempts`中`blocked`紀錄之`type`，判識所致者其`reason`與`type`同值。
@@ -158,7 +158,7 @@ adapter用於覆寫特定站台之取得、判識與解析方式，形狀為`{id
 | --- | --- | --- |
 | `gelonghui` | `parse` | 由頁面內嵌之SSR state取正文 |
 | `bloomberg` | `parse` | 由`__NEXT_DATA__`取正文 |
-| `msn` | `fetch` | 文章頁（`/ar-`）為純前端渲染，四階抓取皆取不到正文，改經其內容API取得；`fallback:false`（落回階梯實測成功率為0） |
+| `msn` | `fetch` | 文章頁（`/ar-`）與影片頁（`/vi-`，取得逐字稿）為純前端渲染，四階抓取皆取不到正文，改經其內容API取得；`fallback:false`（落回階梯實測成功率為0）、`inspect:false`（內容由API之JSON組成而非爬回的頁面，內建判識對它只可能誤判；呼叫端之`detectors`仍會比對） |
 
 `opt.adapters`排在內建清單**之前**，同網域以先命中者勝出。三種常見組合：
 
@@ -234,7 +234,7 @@ let r = await fetchWeb(url, {
                 }
                 return { status: 'success', html: res.html }
             },
-            fallback: true,                              //選填, 預設true
+            fallback: true,                              //選填, 預設true; false表此adapter階以任何方式失敗皆不落回
         },
     ],
 })
@@ -252,6 +252,10 @@ let r = await fetchWeb(url, {
 | 拋錯／reject／非物件／`success`卻無`html`字串 | 契約錯誤，**一律不落回** | `adapter-fetch-error` |
 
 `'skip'`獨立於`fallback`，是因為`match`只看得到網址，而「我的來源有沒有這一篇」常常要查了才知道——那不是失敗，是「我不該被算進來」。契約錯誤不落回則與`match`拋錯同構：呼叫端的程式碼壞了，靜默改用爬蟲會讓他永遠不知道。
+
+**`fallback`管的是整個adapter階，不只`fetch`**（只對具`fetch`掛點的adapter有意義：沒有`fetch`就沒有adapter階，只有`parse`的adapter其解析失敗恆續走階梯）。受它管的失敗出口有三個：`fetch`回傳失敗、`fetch`成功但被判識擋下、`fetch`成功但解析未取得足量正文。`fallback:false`時三者皆收攤，`reason`即該出口之歸因（判識型別、`empty-content`、`parse-error`或你在`parse`自報的值），頂層另帶`adapterId`；未宣告時三者皆落回階梯。另有第四個出口——套件自行推導之網址於抓取後解析至內網——不分階一律收攤，不受`fallback`拘束。宣告`fallback:false`說的是「對這個站台，爬蟲拿不到」，這句話不因失敗發生在哪一段而改變。
+
+去留依**出口**判斷，不依`reason`字串：你在`fetch`或`parse`自報的`reason`不會改變去留。只有`adapter-fetch-error`與`adapter-fetch-skip`是保留名，在`fetch`出口自報它們即得其登記語意（前者恆收攤、後者恆續走）。
 
 **`opt.method`不影響`fetch`是否執行**。兩者回答的是不同問題：`opt.method`是「要爬的時候用哪一種爬法」，`fetch`是「這次要不要爬」；`method`指定的那一階就是`fetch`失敗後的落回對象。
 

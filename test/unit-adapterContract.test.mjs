@@ -122,13 +122,16 @@ describe('契約之單一擁有者', function() {
     it('src內不得有第二處最低字數門檻比較', function() {
 
         //MIN_CONTENT只應被adapterContract消費; 其餘檔案一律呼叫meetsMinContent,
-        //否則adapter路徑與Readability路徑會各自演化而分歧
+        //否則adapter路徑與Readability路徑會各自演化而分歧。
+        //整行註解不計(與unit-reasons同一理由: 假陽性會逼人改寫註解去閃避守門, 等於讓守門壓抑說明)——
+        //此前連註解一起比對, 再以檔名豁免inspectHtml, 是同一問題的個案處置; 本輪即因一句註解提及該名而紅
+        let codeOf = (t) => t.split('\n').filter((line) => {
+            let s = line.trim()
+            return !s.startsWith('//') && !s.startsWith('*')
+        }).join('\n')
         let hits = fs.readdirSync('src')
             .filter((v) => v.endsWith('.mjs') && v !== 'adapterContract.mjs' && v !== 'constants.mjs')
-            .filter((v) => fs.readFileSync(path.join('src', v), 'utf8').includes('MIN_CONTENT'))
-
-            //inspectHtml僅於註解提及, 不含實際比較
-            .filter((v) => v !== 'inspectHtml.mjs')
+            .filter((v) => codeOf(fs.readFileSync(path.join('src', v), 'utf8')).includes('MIN_CONTENT'))
         let r = hits
         let rr = []
         assert.strict.deepEqual(r, rr)

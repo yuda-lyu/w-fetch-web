@@ -2,20 +2,22 @@ import assert from 'assert'
 import map from 'lodash-es/map.js'
 import includes from 'lodash-es/includes.js'
 import fetchWeb from '../src/fetchWeb.mjs'
+import inspectHtml from '../src/inspectHtml.mjs'
 import { matchMsn, fetchMsn } from '../src/fetchMsn.mjs'
-import { URL_MSN, msnApiOk } from './tools/fixtures.mjs'
+import { URL_MSN, msnApiOk, URL_MSN_VIDEO, msnApiVideo, URL_MSN_VIDEO_SHORT, msnApiVideoShort } from './tools/fixtures.mjs'
 
 
 //內建 msn adapter 之測試。
 //
 //**被 fake 掉的是什麼**（原則五第 3 條）：msn 內容 API 之網路回應，經 opt._fetchers.curl 接縫供應。
-//真實情境已另行實測（2026-09-11，Bing News RSS 取得之 12 篇真實 msn 文章頁）：
-//  預設階梯（無此 adapter）  三層全滅，耗時 43 秒
-//  經內容 API               12/12 回 200＋JSON、type='article'、正文 505~963 字；
-//                           重組後之 HTML 經 inspectHtml 12/12 通過、經 Readability 12/12 解析成功
-//fixture 之回應**形狀**取自該次真實回應（見 tools/fixtures.mjs），文字為自擬。
+//真實情境已另行實測:
+//  2026-09-11  Bing News RSS 取得之 12 篇真實文章頁(ar-): 預設階梯三層全滅、43 秒;
+//              經內容 API 12/12 回 200＋JSON、type='article'、正文 505~963 字, 經 Readability 皆解析成功
+//  2026-09-11  同一 id 以 11 種語系路徑呼叫 API, 回應位元組完全相同; 不合法語系回 400
+//  2026-09-12  DuckDuckGo 取得之 6 篇真實影片頁(vi-): 6/6 回 200、type='video'、body 為逐字稿 31~8446 字
+//fixture 之回應**形狀**取自該些真實回應（見 tools/fixtures.mjs），文字為自擬（逐字稿 31 字者為真實值）。
 //本檔不發真實網路請求：外部站台之可用性不應決定本套件測試之成敗
-let API_URL = 'https://assets.msn.com/content/view/v2/Detail/zh-tw/AA2bZm9d'
+let API_URL = 'https://assets.msn.com/content/view/v2/Detail/en-us/AA2bZm9d'
 
 let mkCurl = (resp) => {
     let calls = []
@@ -44,37 +46,78 @@ let mkLadder = () => {
     }
 }
 
+//標記重而可見文字少之正文: 300 個 <img> 撐大 HTML(>5000 bytes)而可見文字僅 120 字(<200),
+//恰落在內建 empty 判識之條件內。真實情境為圖集式報導; 提案方以替身重現之情境①亦為此形
+let heavyBody = '<img src="https://img.example/a.jpg" alt="">'.repeat(300) + '<p>' + '圖說文字。'.repeat(24) + '</p>'
+
+let ctx = { kind: 'ar', id: 'AA2bZm9d' }
+
 
 describe('內建msn adapter', function() {
 
     describe('網址比對(match)', function() {
 
-        it('文章頁網址取出locale與id', function() {
+        it('文章頁與影片頁網址取出kind與id', function() {
             let r = map([
                 'https://www.msn.com/zh-tw/news/other/abc/ar-AA2bZm9d',
                 'https://msn.com/en-us/money/markets/ar-AA1X4Z9P',
                 'https://www.msn.com/EN-US/news/ar-AA1X4Z9P?ocid=BingNewsSerp',
                 'http://www.msn.com/ja-jp/news/x/ar-BB1abc#top',
                 URL_MSN,
+                URL_MSN_VIDEO,
+                'https://www.msn.com/en-us/video/news/abc/vi-AA2bYtCB/',
+                'https://www.msn.com/en-us/video/news/abc/VI-AA2bYtCB?cvid=1',
+                'https://www.msn.com/ar-ae/news/other/slug/ar-AA1abcde',
+                'https://www.msn.com/vi-vn/video/news/slug/vi-AA1abcde',
             ], matchMsn)
             let rr = [
-                { locale: 'zh-tw', id: 'AA2bZm9d' },
-                { locale: 'en-us', id: 'AA1X4Z9P' },
-                { locale: 'en-us', id: 'AA1X4Z9P' },
-                { locale: 'ja-jp', id: 'BB1abc' },
-                { locale: 'zh-tw', id: 'AA2bZm9d' },
+                { kind: 'ar', id: 'AA2bZm9d' },
+                { kind: 'ar', id: 'AA1X4Z9P' },
+                { kind: 'ar', id: 'AA1X4Z9P' },
+                { kind: 'ar', id: 'BB1abc' },
+                { kind: 'ar', id: 'AA2bZm9d' },
+                { kind: 'vi', id: 'AA2bYtCB' },
+                { kind: 'vi', id: 'AA2bYtCB' },
+                { kind: 'vi', id: 'AA2bYtCB' },
+                { kind: 'ar', id: 'AA1abcde' },
+                { kind: 'vi', id: 'AA1abcde' },
             ]
             assert.strict.deepEqual(r, rr)
         })
 
-        it('非文章頁、影片與圖集、缺locale者不命中', function() {
+        it('不要求語系段之形態: 語系已不用於請求, 內容段前只要有一段即可', function() {
+            let r = matchMsn('https://www.msn.com/news/x/ar-AA1abcde')
+            let rr = { kind: 'ar', id: 'AA1abcde' }
+            assert.strict.deepEqual(r, rr)
+        })
 
-            //影片(vi-)與圖集(ss-)之內容API形狀不同, 不在本adapter範圍, 維持既有之階梯流程
+        it('語系代碼本身以ar-/vi-開頭者(ar-ae、ar-sa、vi-vn), 其首頁與頻道頁不命中', function() {
+
+            //本檔第一版允許內容段直接接在主機之後, 於是 /ar-ae/news 被解成 id 為 ae 的內容頁去打 API(實測回 410);
+            //複審以真實網址抓到。內容段之前至少須有一段
+            let r = map([
+                'https://www.msn.com/ar-ae',
+                'https://www.msn.com/ar-ae/',
+                'https://www.msn.com/ar-ae/news',
+                'https://www.msn.com/ar-sa/money',
+                'https://www.msn.com/vi-vn',
+                'https://www.msn.com/vi-vn/news',
+                'https://www.msn.com/ar-ae/news/other/x/gm-AA1abcde',
+                'https://www.msn.com/ar-ae/x/ar-AA1abcde-extra',
+            ], matchMsn)
+            let rr = [null, null, null, null, null, null, null, null]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('非內容頁、gm與ss型、id段含連字號者不命中', function() {
+
+            //gm 型實測 API 回 410 無來源; 圖集(ss-)未取得樣本, 沒有量測就不加。
+            //內容 id 不含 -, 故 /ar-foo-bar 這類一般路徑段不得被誤判
             let r = map([
                 'https://www.msn.com/zh-tw/news',
-                'https://www.msn.com/en-us/video/x/vi-AA1abcde',
+                'https://www.msn.com/en-us/video/browse/mostwatchedtoday',
+                'https://www.msn.com/en-us/x/gm-AA1abcde',
                 'https://www.msn.com/en-us/news/x/ss-AA1abcde',
-                'https://www.msn.com/news/x/ar-AA1abcde',
                 'https://www.msn.com/zh-tw/x/ar-AA1abcde-extra',
             ], matchMsn)
             let rr = [null, null, null, null, null]
@@ -103,9 +146,9 @@ describe('內建msn adapter', function() {
 
     describe('取得內容(fetch)', function() {
 
-        let ctx = { locale: 'zh-tw', id: 'AA2bZm9d' }
+        it('固定以en-us請求內容API(不取網址語系), 並原樣轉傳opt', async function() {
 
-        it('依locale與id請求內容API, 並原樣轉傳opt', async function() {
+            //實測 11 種語系路徑回應完全相同、不合法語系回 400: 取網址語系只會多一個失敗點
             let curl = mkCurl(okResp(msnApiOk))
             await fetchMsn(URL_MSN, { _fetchers: { curl }, maxRetries: 2, timeoutMs: 9000 }, ctx)
             let r = [curl.calls.length, curl.calls[0].u, curl.calls[0].o.maxRetries, curl.calls[0].o.timeoutMs]
@@ -127,6 +170,23 @@ describe('內建msn adapter', function() {
             assert.strict.deepEqual(r, rr)
         })
 
+        it('影片型別之回應同樣重組, body即逐字稿', async function() {
+            let t = await fetchMsn(URL_MSN_VIDEO, { _fetchers: { curl: mkCurl(okResp(msnApiVideo)) } }, { kind: 'vi', id: 'AA2bYtCB' })
+            let r = [t.status, includes(t.html, '<h1>市場週報：本週三大焦點</h1>'), includes(t.html, '<p>大家好，本週市場焦點')]
+            let rr = ['success', true, true]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('不以type白名單擋: 未知型別只要有body即交給解析', async function() {
+
+            //套件給機制: 站方若再增一種帶 body 的型別, 交給判識與解析仍是正確的預設,
+            //以白名單擋掉只會多一個要發版才能解的失敗
+            let t = await fetchMsn(URL_MSN, { _fetchers: { curl: mkCurl(okResp({ ...msnApiOk, type: 'slideshow' })) } }, ctx)
+            let r = [t.status, includes(t.html, '<p>本週市場焦點')]
+            let rr = ['success', true]
+            assert.strict.deepEqual(r, rr)
+        })
+
         it('標題經HTML轉義', async function() {
             let data = { ...msnApiOk, title: 'A<script>x</script>&"' }
             let t = await fetchMsn(URL_MSN, { _fetchers: { curl: mkCurl(okResp(data)) } }, ctx)
@@ -145,13 +205,14 @@ describe('內建msn adapter', function() {
             assert.strict.deepEqual(r, rr)
         })
 
-        it('回應形狀不合預期時回adapter-fetch-miss', async function() {
+        it('回應非JSON、非物件或無body時回adapter-fetch-miss', async function() {
             let cases = [
                 { status: 'success', html: 'not json', method: 'curl' },
                 { status: 'success', html: 'null', method: 'curl' },
-                okResp({ ...msnApiOk, type: 'video' }),
+                { status: 'success', html: '[1,2]', method: 'curl' },
                 okResp({ ...msnApiOk, body: undefined }),
                 okResp({ ...msnApiOk, body: 123 }),
+                okResp({ ...msnApiOk, body: '' }),
             ]
             let r = []
             for (let c of cases) {
@@ -163,9 +224,11 @@ describe('內建msn adapter', function() {
         })
 
         it('ctx不合法時不發請求', async function() {
+
+            //內建之 match 命中時必帶 id, 但 fetchMsn 對外匯出、可配呼叫端自己的 match 使用, 故仍檢核
             let curl = mkCurl(okResp(msnApiOk))
             let r = []
-            for (let bad of [null, {}, { locale: 'zh-tw' }, { id: 'AA1' }]) {
+            for (let bad of [null, {}, { kind: 'ar' }, { id: '' }]) {
                 let t = await fetchMsn(URL_MSN, { _fetchers: { curl } }, bad)
                 r.push(t.reason)
             }
@@ -205,23 +268,82 @@ describe('內建msn adapter', function() {
             assert.strict.deepEqual(r, rr)
         })
 
+        it('msn影片頁經內容API取得逐字稿並解析', async function() {
+            let ladder = mkLadder()
+            let curl = mkCurl(okResp(msnApiVideo))
+            let t = await fetchWeb(URL_MSN_VIDEO, { showLog: false, _fetchers: { curl, ...ladder.fs } })
+            let r = [t.status, t.method, t.adapterId, t.title, includes(t.content, '本週市場焦點'), t.attempts.length, ladder.total()]
+            let rr = ['success', 'adapter', 'msn', '市場週報：本週三大焦點', true, 1, 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
         it('API失敗時不落回階梯(fallback:false)', async function() {
 
             //落回的存在理由是「還抓得到內容」, 對msn不成立——落回只會白耗兩次Chrome啟動加一次camofox
             let ladder = mkLadder()
             let curl = mkCurl({ status: 'error', reason: 'http-error', message: 'HTTP 410', httpCode: 410, method: 'curl' })
             let t = await fetchWeb(URL_MSN, { showLog: false, _fetchers: { curl, ...ladder.fs } })
-            let r = [t.status, t.reason, map(t.attempts, (a) => [a.method, a.status, a.reason]), ladder.total()]
-            let rr = ['error', 'http-error', [['adapter', 'failed', 'http-error']], 0]
+            let r = [t.status, t.reason, t.adapterId, map(t.attempts, (a) => [a.method, a.status, a.reason, a.adapterId]), ladder.total()]
+            let rr = ['error', 'http-error', 'msn', [['adapter', 'failed', 'http-error', 'msn']], 0]
             assert.strict.deepEqual(r, rr)
         })
 
-        it('API回應形狀不合預期時亦不落回', async function() {
+        it('opt.method指定任一種爬法時adapter階仍在其前, 成功即不動用該爬法', async function() {
+            let r = []
+            for (let m of ['curl', 'playwright', 'playwright-headed', 'camofox']) {
+                let ladder = mkLadder()
+                let curl = mkCurl(okResp(msnApiOk))
+                let t = await fetchWeb(URL_MSN, { showLog: false, method: m, _fetchers: { curl, ...ladder.fs } })
+                r.push([t.status, t.method, t.attempts.length, curl.calls.length, ladder.total()])
+            }
+            let rr = map([1, 2, 3, 4], () => ['success', 'adapter', 1, 1, 0])
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('API回應無body時亦不落回', async function() {
             let ladder = mkLadder()
-            let curl = mkCurl(okResp({ ...msnApiOk, type: 'slideshow' }))
+            let curl = mkCurl(okResp({ ...msnApiOk, body: undefined }))
             let t = await fetchWeb(URL_MSN, { showLog: false, _fetchers: { curl, ...ladder.fs } })
             let r = [t.status, t.reason, ladder.total()]
             let rr = ['error', 'adapter-fetch-miss', 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('正文不足MIN_CONTENT時即以empty-content收攤, 不續跑瀏覽器階梯(真實值)', async function() {
+
+            //fixture 為 2026-09-12 實抓之真實影片頁: API 回 200 而逐字稿僅 31 字。
+            //此前 fallback 只擋 fetch 失敗, 此格會續跑三層瀏覽器(43 秒)且歸因被末階蓋成 camofox-empty——
+            //呼叫端看不出真正原因是「這篇本來就沒有正文」。fallback 現涵蓋整個 adapter 階(runPlan 之 _mayEscalate)
+            let ladder = mkLadder()
+            let curl = mkCurl(okResp(msnApiVideoShort))
+            let t = await fetchWeb(URL_MSN_VIDEO_SHORT, { showLog: false, _fetchers: { curl, ...ladder.fs } })
+            let r = [t.status, t.reason, t.adapterId, map(t.attempts, (a) => [a.method, a.adapterId, a.status, a.reason]), ladder.total()]
+            let rr = ['error', 'empty-content', 'msn', [['adapter', 'msn', 'blocked', 'empty-content']], 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('inspect:false: 標記重而可見文字少之正文不被內建empty判識誤擋', async function() {
+
+            //對照組先證明這份重組 HTML 若經內建判識即判 empty(HTML>5000 bytes 且可見文字<200),
+            //亦即本條驗的是 inspect:false 真的生效, 而不是 fixture 剛好落在判識條件之外
+            let data = { ...msnApiOk, body: heavyBody }
+            let html = (await fetchMsn(URL_MSN, { _fetchers: { curl: mkCurl(okResp(data)) } }, ctx)).html
+            let ladder = mkLadder()
+            let t = await fetchWeb(URL_MSN, { showLog: false, _fetchers: { curl: mkCurl(okResp(data)), ...ladder.fs } })
+            let r = [html.length > 5000, inspectHtml(html, { contentKind: 'synthesized' }).type, t.status, t.method, t.contentLength >= 50, ladder.total()]
+            let rr = [true, 'empty', 'success', 'adapter', true, 0]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('inspect:false只關內建判識器, 呼叫端註冊之判識器照常比對, 擋下即收攤', async function() {
+
+            //detectorContract 保證註冊的判識器一定會被比對; adapter 之豁免不歸它管。
+            //擋下後因 fallback:false 不續走, 歸因為呼叫端判識器之 type
+            let ladder = mkLadder()
+            let detectors = [{ id: 'mine', type: 'verify', message: '呼叫端判識', test: (c) => c.lower.includes('本週市場焦點') }]
+            let t = await fetchWeb(URL_MSN, { showLog: false, detectors, _fetchers: { curl: mkCurl(okResp(msnApiOk)), ...ladder.fs } })
+            let r = [t.status, t.reason, map(t.attempts, (a) => [a.method, a.adapterId, a.status, a.type, a.message]), ladder.total()]
+            let rr = ['error', 'verify', [['adapter', 'msn', 'blocked', 'verify', '呼叫端判識']], 0]
             assert.strict.deepEqual(r, rr)
         })
 

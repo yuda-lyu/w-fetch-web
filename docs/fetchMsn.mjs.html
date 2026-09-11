@@ -1,4 +1,51 @@
-import isestr from 'wsemi/src/isestr.mjs'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>fetchMsn.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#checkFetched">checkFetched</a></li><li><a href="global.html#checkHttpStatus">checkHttpStatus</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchMsn">fetchMsn</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#fetcherOf">fetcherOf</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isInternalHost">isInternalHost</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidDetector">isValidDetector</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#matchMsn">matchMsn</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeDetector">normalizeDetector</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseArticle">parseArticle</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runFetchSafely">runFetchSafely</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#wantsFallback">wantsFallback</a></li><li><a href="global.html#wantsInspect">wantsInspect</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">fetchMsn.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import isestr from 'wsemi/src/isestr.mjs'
 import isobj from 'wsemi/src/isobj.mjs'
 import fetchWebByCurl from './fetchWebByCurl.mjs'
 import fetcherOf from './fetcherSeam.mjs'
@@ -38,8 +85,8 @@ let API_BASE = 'https://assets.msn.com/content/view/v2/Detail/en-us/'
 
 //內容頁網址之比對規則
 //
-//形如 https://www.msn.com/zh-tw/news/other/<slug>/ar-AA2bZm9d
-//     https://www.msn.com/en-us/video/news/<slug>/vi-AA2bYtCB
+//形如 https://www.msn.com/zh-tw/news/other/&lt;slug>/ar-AA2bZm9d
+//     https://www.msn.com/en-us/video/news/&lt;slug>/vi-AA2bYtCB
 //  kind  ar 為文章、vi 為影片(API 之 body 為逐字稿), 兩者皆已以真實網址實測(見檔頭)。
 //        gm 型實測 API 回 410、ss(圖集)未取得樣本, 皆不納入——沒有量測就不加
 //  id    英數字; 其後須為 /、?、# 或結尾, 使 /ar-foo-bar 這類一般路徑段不被誤判(內容 id 不含 -;
@@ -48,7 +95,7 @@ let API_BASE = 'https://assets.msn.com/content/view/v2/Detail/en-us/'
 //msn 之語系代碼本身就有以 ar-／vi- 開頭者(ar-ae、ar-sa、vi-vn), 若允許內容段直接接在主機之後,
 //語系首頁與頻道頁(如 /ar-ae/news)會被當成 id 為 ae 的內容頁去打 API(實測回 410), 歸因變成「內容已下架」而非「不是內容頁」。
 //本檔第一版正是如此放寬, 而 ar-ae 就在上方已測語系清單裡——複審以真實網址抓到。
-//真實內容網址一律有語系與分類段(提案方掃 725 篇皆然), 不需要支援根層級 /ar-<id>。
+//真實內容網址一律有語系與分類段(提案方掃 725 篇皆然), 不需要支援根層級 /ar-&lt;id>。
 //子網域寬度與 routeByUrl 對 msn 之寫法一致((?:www\.)?), 理由見該檔檔頭
 let CONTENT_RE = /^https?:\/\/(?:www\.)?msn\.com\/[^?#]*\/(ar|vi)-([A-Za-z0-9]+)(?:[/?#]|$)/i
 
@@ -89,10 +136,10 @@ function matchMsn(url) {
 //HTML 轉義, 供標題放入重組之文件
 function _esc(s) {
     return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/&amp;/g, '&amp;amp;')
+        .replace(/&lt;/g, '&amp;lt;')
+        .replace(/>/g, '&amp;gt;')
+        .replace(/"/g, '&amp;quot;')
 }
 
 
@@ -171,8 +218,8 @@ async function fetchMsn(url, opt, ctx) {
     }
 
     let title = isestr(data.title) ? data.title : ''
-    let html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + _esc(title) + '</title></head>' +
-        '<body><article><h1>' + _esc(title) + '</h1>' + data.body + '</article></body></html>'
+    let html = '&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;meta charset="utf-8">&lt;title>' + _esc(title) + '&lt;/title>&lt;/head>' +
+        '&lt;body>&lt;article>&lt;h1>' + _esc(title) + '&lt;/h1>' + data.body + '&lt;/article>&lt;/body>&lt;/html>'
 
     return { status: 'success', html, contentKind: 'synthesized' }
 }
@@ -182,3 +229,28 @@ export {
     matchMsn,
     fetchMsn
 }
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Sep 12 2026 05:43:30 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
