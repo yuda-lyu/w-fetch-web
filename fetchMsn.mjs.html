@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>fetchMsn.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#checkFetched">checkFetched</a></li><li><a href="global.html#checkHttpStatus">checkHttpStatus</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchMsn">fetchMsn</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#fetcherOf">fetcherOf</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isInternalHost">isInternalHost</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidDetector">isValidDetector</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#matchMsn">matchMsn</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeDetector">normalizeDetector</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseArticle">parseArticle</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runFetchSafely">runFetchSafely</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#wantsFallback">wantsFallback</a></li><li><a href="global.html#wantsInspect">wantsInspect</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">fetchMsn.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import isestr from 'wsemi/src/isestr.mjs'
+import isobj from 'wsemi/src/isobj.mjs'
+import fetchWebByCurl from './fetchWebByCurl.mjs'
+import fetcherOf from './fetcherSeam.mjs'
+
+
+//MSN 內建 adapter：網址比對與 fetch 掛點
+//
+//── 為何需要 fetch 掛點而非 parse ──
+//msn.com 之內容頁為純前端渲染, 本套件四階實測全數失敗(2026-09-11, 真實文章頁):
+//  curl                 42708 bytes 殼頁, title="MSN", visible=0  → empty
+//  playwright-headless  57031 bytes, visible=21                    → empty
+//  playwright-headed    56605 bytes, visible=21                    → empty
+//  camofox              snapshot 0 字                              → camofox-empty
+//整條階梯耗時 43 秒而成功率為 0。問題不在解析, 是頁面裡根本沒有正文——故只能改從內容 API 取得。
+//
+//── 內容 API ──
+//  GET https://assets.msn.com/content/view/v2/Detail/en-us/{id}
+//回 JSON, 含 title、body(HTML 字串)、type、provider、sourceHref 等欄。真實量測:
+//  文章 ar-  2026-09-11 實抓 12 篇, 皆 200、type='article', body 純文字 505~963 字
+//  影片 vi-  2026-09-12 實抓 6 篇, 皆 200、type='video', body 為逐字稿 31~8446 字(其中一篇僅 31 字)
+//  其他      gm- 型回 410(提案方實測); 不存在之 id 回 410; 不合法之語系回 400
+//
+//── 為何回傳重組之 HTML 而非直接回傳文章 ──
+//fetch 掛點之輸出契約與四個抓取器同形({status, html}), 取得後照常走解析——
+//實測 18 篇重組後之 HTML 經 Readability 17 篇解析成功, 1 篇(逐字稿 31 字)依最低字數門檻回 empty-content,
+//故本 adapter 不需要 parse 掛點, 呼叫端亦可另以自己的 parse 覆寫。
+//contentKind 標為 synthesized: 這份 HTML 由 JSON 組出, 不是站方原始文件
+
+
+//API 端點。host 寫死, 路徑中之 id 經下方比對規則限定字元集, 無法注入任意網址。
+//
+//語系固定為 en-us, 不取網址中的語系: 2026-09-11 實測同一 id 以 11 種語系路徑
+//(en-us／en-xl／es-xl／zh-hk／ja-jp／en-gb／fr-fr／pt-br／ar-ae／de-de／EN-US)呼叫, 回應位元組完全相同,
+//提案方另測 5 種與 15 種亦同; 而不合法之語系回 400。取網址語系只會多一個失敗點, 沒有任何收益
+let API_BASE = 'https://assets.msn.com/content/view/v2/Detail/en-us/'
+
+
+//內容頁網址之比對規則
+//
+//形如 https://www.msn.com/zh-tw/news/other/&lt;slug>/ar-AA2bZm9d
+//     https://www.msn.com/en-us/video/news/&lt;slug>/vi-AA2bYtCB
+//  kind  ar 為文章、vi 為影片(API 之 body 為逐字稿), 兩者皆已以真實網址實測(見檔頭)。
+//        gm 型實測 API 回 410、ss(圖集)未取得樣本, 皆不納入——沒有量測就不加
+//  id    英數字; 其後須為 /、?、# 或結尾, 使 /ar-foo-bar 這類一般路徑段不被誤判(內容 id 不含 -;
+//        提案方掃其佇列 725 篇, id 段含 - 者 0 篇)
+//內容段之前的各段不限形態(不要求是 xx-yy 語系, 語系已不用於請求), **但至少須有一段**:
+//msn 之語系代碼本身就有以 ar-／vi- 開頭者(ar-ae、ar-sa、vi-vn), 若允許內容段直接接在主機之後,
+//語系首頁與頻道頁(如 /ar-ae/news)會被當成 id 為 ae 的內容頁去打 API(實測回 410), 歸因變成「內容已下架」而非「不是內容頁」。
+//本檔第一版正是如此放寬, 而 ar-ae 就在上方已測語系清單裡——複審以真實網址抓到。
+//真實內容網址一律有語系與分類段(提案方掃 725 篇皆然), 不需要支援根層級 /ar-&lt;id>。
+//子網域寬度與 routeByUrl 對 msn 之寫法一致((?:www\.)?), 理由見該檔檔頭
+let CONTENT_RE = /^https?:\/\/(?:www\.)?msn\.com\/[^?#]*\/(ar|vi)-([A-Za-z0-9]+)(?:[/?#]|$)/i
+
+
+/**
+ * 比對 msn 內容頁網址並取出內容型別與 id
+ *
+ * 作為內建 msn adapter 之 match 掛點。回傳之物件即為 ctx，傳入 fetch 掛點
+ *
+ * @param {String} url 輸入網址字串
+ * @returns {Object|null} 命中時回傳{kind,id}，kind為'ar'(文章)或'vi'(影片)；未命中時回傳null
+ * @example
+ *
+ * import { matchMsn } from './src/fetchMsn.mjs'
+ *
+ * console.log(matchMsn('https://www.msn.com/zh-tw/news/other/abc/ar-AA2bZm9d'))
+ * // => { kind: 'ar', id: 'AA2bZm9d' }
+ *
+ * console.log(matchMsn('https://www.msn.com/en-us/video/news/abc/vi-AA2bYtCB'))
+ * // => { kind: 'vi', id: 'AA2bYtCB' }
+ *
+ * console.log(matchMsn('https://www.msn.com/zh-tw/news'))
+ * // => null
+ *
+ */
+function matchMsn(url) {
+    if (!isestr(url)) {
+        return null
+    }
+    let m = url.match(CONTENT_RE)
+    if (!m) {
+        return null
+    }
+    return { kind: m[1].toLowerCase(), id: m[2] }
+}
+
+
+//HTML 轉義, 供標題放入重組之文件
+function _esc(s) {
+    return String(s)
+        .replace(/&amp;/g, '&amp;amp;')
+        .replace(/&lt;/g, '&amp;lt;')
+        .replace(/>/g, '&amp;gt;')
+        .replace(/"/g, '&amp;quot;')
+}
+
+
+//內容 API 回應形狀不合預期時之失敗結果
+function _miss(message) {
+    return { status: 'error', reason: 'adapter-fetch-miss', message: 'msn: ' + message }
+}
+
+
+/**
+ * 經 msn 內容 API 取得內容，重組為 HTML 文件
+ *
+ * 作為內建 msn adapter 之 fetch 掛點。API 之請求走本套件之 curl 抓取器，
+ * 故 User-Agent、重試與 HTTP 狀態判準與其餘抓取一致；opt 原樣轉傳，並沿用 opt._fetchers.curl 測試接縫
+ *
+ * @param {String} url 輸入內容頁網址字串，本函數僅用於訊息
+ * @param {Object} opt 輸入設定物件，轉傳給 curl 抓取器
+ * @param {Object} ctx 輸入 matchMsn 之回傳物件{kind,id}
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',html,contentKind:'synthesized'}，失敗時為{status:'error',reason,message}，本函數不會reject
+ * @example
+ *
+ * import { matchMsn, fetchMsn } from './src/fetchMsn.mjs'
+ *
+ * let test = async () => {
+ *     let url = 'https://www.msn.com/zh-tw/news/other/abc/ar-AA2bZm9d'
+ *     let r = await fetchMsn(url, {}, matchMsn(url))
+ *     console.log(r.status, r.contentKind)
+ *     // => 'success' 'synthesized'
+ * }
+ * await test()
+ *     .catch((err) => {
+ *         console.log(err)
+ *     })
+ *
+ */
+async function fetchMsn(url, opt, ctx) {
+
+    //ctx 由內建之 match 供給時必帶 id; 但本函數對外匯出, 可被呼叫端配上自己的 match 使用, 故仍檢核
+    if (!isobj(ctx) || !isestr(ctx.id)) {
+        return _miss('no content id in url')
+    }
+
+    //真實curl抓取器不會reject, 但本函數經測試接縫可接到任意函數;
+    //上層runFetchSafely雖會攔下, 本函數自身之「不會reject」仍須成立, 不依賴呼叫者代為兜底
+    let curl = fetcherOf(opt, 'curl', fetchWebByCurl)
+    let r
+    try {
+        r = await curl(API_BASE + ctx.id, opt)
+    }
+    catch (err) {
+        return { status: 'error', reason: 'fetcher-error', message: 'msn api: ' + (err?.message || String(err)) }
+    }
+
+    //抓取失敗(含 410 內容不存在、400 等)原樣帶回其歸因, 不改寫——那是抓取層已登記之值域
+    if (r?.status !== 'success') {
+        return { status: 'error', reason: r?.reason || 'unknown', message: 'msn api: ' + (r?.message || 'request failed') }
+    }
+
+    let data
+    try {
+        data = JSON.parse(r.html)
+    }
+    catch {
+        return _miss('api response is not JSON')
+    }
+
+    if (!isobj(data)) {
+        return _miss('api response is not an object')
+    }
+
+    //只要求有 body, 不檢核 type: 實測文章為 'article'、影片為 'video', 兩者皆有 body。
+    //站方若再增一種帶 body 的型別, 把它交給判識與解析仍是正確的預設(套件給機制);
+    //以白名單擋掉只會多一個要發版才能解的失敗。正文不足則由解析階以 empty-content 回報
+    if (!isestr(data.body)) {
+        return _miss('content has no body')
+    }
+
+    let title = isestr(data.title) ? data.title : ''
+    let html = '&lt;!DOCTYPE html>&lt;html>&lt;head>&lt;meta charset="utf-8">&lt;title>' + _esc(title) + '&lt;/title>&lt;/head>' +
+        '&lt;body>&lt;article>&lt;h1>' + _esc(title) + '&lt;/h1>' + data.body + '&lt;/article>&lt;/body>&lt;/html>'
+
+    return { status: 'success', html, contentKind: 'synthesized' }
+}
+
+
+export {
+    matchMsn,
+    fetchMsn
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Sep 12 2026 05:43:30 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
