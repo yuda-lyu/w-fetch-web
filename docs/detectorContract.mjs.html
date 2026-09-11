@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>detectorContract.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#WFetchWeb">WFetchWeb</a></li><li><a href="global.html#adapt">adapt</a></li><li><a href="global.html#buildPlan">buildPlan</a></li><li><a href="global.html#checkFetched">checkFetched</a></li><li><a href="global.html#checkHttpStatus">checkHttpStatus</a></li><li><a href="global.html#estimateVisibleText">estimateVisibleText</a></li><li><a href="global.html#extractHtmlTitle">extractHtmlTitle</a></li><li><a href="global.html#extractPageContent">extractPageContent</a></li><li><a href="global.html#extractRedirectTarget">extractRedirectTarget</a></li><li><a href="global.html#fetchWeb">fetchWeb</a></li><li><a href="global.html#fetchWebByCamofox">fetchWebByCamofox</a></li><li><a href="global.html#fetchWebByCurl">fetchWebByCurl</a></li><li><a href="global.html#fetchWebByPlaywrightHead">fetchWebByPlaywrightHead</a></li><li><a href="global.html#fetchWebByPlaywrightHeadless">fetchWebByPlaywrightHeadless</a></li><li><a href="global.html#fetchedAtIso">fetchedAtIso</a></li><li><a href="global.html#fetchedAtLocal">fetchedAtLocal</a></li><li><a href="global.html#finalize">finalize</a></li><li><a href="global.html#findAdapter">findAdapter</a></li><li><a href="global.html#getBrowserPageOptions">getBrowserPageOptions</a></li><li><a href="global.html#getCurlIdentity">getCurlIdentity</a></li><li><a href="global.html#getOptArr">getOptArr</a></li><li><a href="global.html#getOptBool">getOptBool</a></li><li><a href="global.html#getOptP0Int">getOptP0Int</a></li><li><a href="global.html#getOptPInt">getOptPInt</a></li><li><a href="global.html#getOptStr">getOptStr</a></li><li><a href="global.html#getRequestIdentity">getRequestIdentity</a></li><li><a href="global.html#getRetryWaitMs">getRetryWaitMs</a></li><li><a href="global.html#getUrlErrorResult">getUrlErrorResult</a></li><li><a href="global.html#inspectHtml">inspectHtml</a></li><li><a href="global.html#isInternalHost">isInternalHost</a></li><li><a href="global.html#isValidAdapter">isValidAdapter</a></li><li><a href="global.html#isValidDetector">isValidDetector</a></li><li><a href="global.html#isValidUrl">isValidUrl</a></li><li><a href="global.html#meetsMinContent">meetsMinContent</a></li><li><a href="global.html#navigateWithRedirectWait">navigateWithRedirectWait</a></li><li><a href="global.html#normalizeDetector">normalizeDetector</a></li><li><a href="global.html#normalizeParsed">normalizeParsed</a></li><li><a href="global.html#parseArticle">parseArticle</a></li><li><a href="global.html#parseBloomberg">parseBloomberg</a></li><li><a href="global.html#parseGelonghui">parseGelonghui</a></li><li><a href="global.html#requiresCamofox">requiresCamofox</a></li><li><a href="global.html#requiresHeaded">requiresHeaded</a></li><li><a href="global.html#requiresHeadless">requiresHeadless</a></li><li><a href="global.html#requiresJsRedirect">requiresJsRedirect</a></li><li><a href="global.html#resolveCamofoxServer">resolveCamofoxServer</a></li><li><a href="global.html#runCamofoxAttempt">runCamofoxAttempt</a></li><li><a href="global.html#runFetchSafely">runFetchSafely</a></li><li><a href="global.html#runPlan">runPlan</a></li><li><a href="global.html#runPlaywright">runPlaywright</a></li><li><a href="global.html#snapshotToHtml">snapshotToHtml</a></li><li><a href="global.html#summarizeFail">summarizeFail</a></li><li><a href="global.html#wantsFallback">wantsFallback</a></li><li><a href="global.html#wantsInspect">wantsInspect</a></li><li><a href="global.html#withRetry">withRetry</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">detectorContract.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import isestr from 'wsemi/src/isestr.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
+import isobj from 'wsemi/src/isobj.mjs'
+import { DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMPTY } from './constants.mjs'
+
+
+//使用端判識器之契約：本模組為其唯一事實來源
+//
+//── 為何開放註冊 ──
+//套件的發版次數必然遠少於安裝方遇到新情況的次數。內建判識器的關鍵字全為英文，
+//實測簡體中文攔阻頁（如「正在进行安全检测」）無任何判識器認得，只靠empty兜底，
+//而empty是最脆弱的判準——該頁文案一長即漏判，挑戰頁樣板遂被當文章回傳。
+//日文、韓文、各家新WAF同理。套件補不完，故改為套件提供機制與合理預設、安裝方補自己遇到的
+//
+//── 判識器之形狀 ──
+//  type      必填，須為'captcha'、'verify'、'redirect'、'empty'之一（見constants之DETECT_*）
+//  message   必填，字串或(ctx)=>字串
+//  test      必填，(ctx)=>布林
+//  evidence  選填，'structural'或'semantic'，預設'semantic'
+//  id        選填，供錯誤訊息辨識
+//
+//無strength欄。內建判識器有此欄是為了決定要不要套內容量閘門，而該閘門**不套用於本契約
+//註冊者**（理由見下節），故此欄對使用端無意義，給了也不讀
+//
+//── ctx 之公開形狀（對外契約，不可任意增刪） ──
+//  html        原始HTML字串
+//  lower       html之小寫版本
+//  title       &lt;title>之內容，已去除前後空白
+//  titleLower  title之小寫版本
+//  visible     估算之可見文字（惰性計算，取用才付出成本）
+//
+//── evidence 之語意 ──
+//  evidence='structural'  判準依賴script來源、class、id或meta標籤。抓取器穿透Shadow DOM
+//                         或由accessibility snapshot合成內容時這些結構已被剝除，
+//                         故合成內容不比對此類。判準若只看內文字串，不要標structural
+//  evidence='semantic'    判準只看標題文字、內文文字或內容量，合成內容亦成立
+//
+//未標時視為semantic，刻意選在安全側：合成內容也會比對，寧可多擋
+//
+//── 內容量閘門不套用於使用端判識器（呼叫端須知的精確度責任） ──
+//內建判識器之弱判準（單看某個內文字串）受一道內容量閘門保護：可見文字超過門檻即不比對，
+//以免談論反爬蟲的正常長文被誤殺。**此閘門不套用於本契約註冊者**，理由有三：
+//  一、閘門是為了保護套件自己的猜測。內建判準要套用到全世界每一個頁面，套件不知道呼叫端
+//      的語料，只能保守；使用端判識器則是呼叫端**因為內建漏判了他實際遇到的頁面**才註冊，
+//      關鍵字與語料都由他掌握，套件無從判斷其誤判率，代為設限只是替他做錯決定
+//  二、兩種失敗不對稱。呼叫端寫太鬆→在他自己的關鍵字上出現可歸因的誤擋，查得出來；
+//      被閘門靜默跳過→「註冊了但完全沒反應」，查不出來，且看起來就是機制壞掉
+//  三、本機制的動機情境依定義就在閘門之上。內建靠empty兜底的長篇中文攔阻頁，正是
+//      「可見文字夠多所以empty漏判」的那一類；套閘門等於讓機制在唯一動機情境下必然無效
+//
+//故責任分野是：**套件保證註冊的判識器一定會被比對，判準的精確度由呼叫端負責**。
+//判準請盡量取攔阻頁專屬之字串（如其固定文案、廠商名），不要用該站正常文章也會出現的詞
+//
+//── 錯誤邊界：與adapter刻意不同 ──
+//adapter之match拋錯會顯性回報reason='adapter-error'而不靜默改用預設解析器，
+//因為adapter是**內容來源**，壞掉就取不到正確內容，必須讓呼叫端知道。
+//判識器則是**補充保護**：一個判識器拋錯不該使整次抓取失敗，故攔下後略過該項、
+//其餘判識器照常運作，並於showLog開啟時輸出警告
+
+
+let VALID_TYPES = Object.freeze([DETECT_CAPTCHA, DETECT_VERIFY, DETECT_REDIRECT, DETECT_EMPTY])
+
+
+//使用端判識器之來源標記
+let ORIGIN_CUSTOM = 'custom'
+
+
+/**
+ * 檢核使用端判識器是否符合契約
+ *
+ * 不合法者一律略過而非拋錯，與adapter之處置一致
+ *
+ * @param {*} detector 輸入待檢核之判識器
+ * @returns {Boolean} 回傳是否合法之布林值
+ * @example
+ *
+ * import { isValidDetector } from './src/detectorContract.mjs'
+ *
+ * console.log(isValidDetector({ type: 'captcha', message: 'x', test: () => true }))
+ * // => true
+ *
+ * console.log(isValidDetector({ type: 'unknown', message: 'x', test: () => true }))
+ * // => false
+ *
+ */
+function isValidDetector(detector) {
+
+    if (!isobj(detector)) {
+        return false
+    }
+
+    //type須為既有值域內之一, 否則呼叫端會收到自己認不得的type
+    if (!VALID_TYPES.includes(detector.type)) {
+        return false
+    }
+
+    //message可為字串或函數
+    if (!isestr(detector.message) &amp;&amp; !isfun(detector.message)) {
+        return false
+    }
+
+    if (!isfun(detector.test)) {
+        return false
+    }
+
+    return true
+}
+
+
+/**
+ * 把使用端判識器正規化為內部形狀，補上預設之evidence並標記來源
+ *
+ * origin標記為'custom'，供判識流程據以略過內容量閘門，理由見本檔檔頭
+ *
+ * @param {Object} detector 輸入已通過檢核之判識器
+ * @returns {Object} 回傳正規化後之判識器物件
+ * @example
+ *
+ * import { normalizeDetector } from './src/detectorContract.mjs'
+ *
+ * console.log(normalizeDetector({ type: 'captcha', message: 'x', test: () => true }).evidence)
+ * // => 'semantic'
+ *
+ */
+function normalizeDetector(detector) {
+    return {
+        type: detector.type,
+        message: detector.message,
+        test: detector.test,
+
+        //未標evidence時視為semantic, 落在安全側: 合成內容亦比對, 寧可多擋
+        evidence: detector.evidence === 'structural' ? 'structural' : 'semantic',
+
+        //來源標記, 不取自輸入; 判識流程據此得知內容量閘門不適用
+        origin: ORIGIN_CUSTOM,
+        id: isestr(detector.id) ? detector.id : 'custom',
+    }
+}
+
+
+export {
+    VALID_TYPES,
+    ORIGIN_CUSTOM,
+    isValidDetector,
+    normalizeDetector
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Fri Sep 11 2026 15:18:29 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

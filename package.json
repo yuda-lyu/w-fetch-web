@@ -1,6 +1,6 @@
 {
   "name": "w-fetch-web",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "main": "dist/w-fetch-web.umd.js",
   "dependencies": {
     "@askjo/camofox-browser": "1.13.1",
