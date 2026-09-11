@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>fetchWebByPlaywrightHeadless.mjs - Documentation</title>
+    <title>fetchContract.mjs - Documentation</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -35,7 +35,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">fetchWebByPlaywrightHeadless.mjs</h1>
+    <h1 class="page-title">fetchContract.mjs</h1>
     
 
     
@@ -45,66 +45,104 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>import runPlaywright from './runPlaywright.mjs'
-import { METHOD_PW_HEADLESS as METHOD } from './constants.mjs'
+            <pre class="prettyprint source linenums"><code>import isestr from 'wsemi/src/isestr.mjs'
+import isobj from 'wsemi/src/isobj.mjs'
 
 
-//預設值
+//抓取端之契約：本模組為其唯一事實來源
 //
-//本值與有頭模式之5000不同, 該差異自初版即存在且未見記錄。
-//有頭模式另需等待驗證元件出現與人為點擊, 較長之等待有其道理, 但3000與5000這兩個
-//具體數字未經量測, 屬未經驗證之推測。調整前應先量測真實頁面之渲染完成時間
-let DEFAULT_POST_NAV_WAIT_MS = 3000
+//對稱性補完：本套件原有兩個使用端擴充點各自有完整的檢核與錯誤邊界——
+//adapter之parse由adapterContract把關、判識器由detectorContract把關——
+//**抓取這一端卻沒有**。四個內建抓取器不拋錯故不出事，但：
+//  一、opt._fetchers是文件化的測試接縫，接的就是呼叫端寫的函數
+//  二、adapter之fetch掛點接上後，抓取器就是呼叫端程式碼
+//
+//實測三條路徑（改動前）：
+//  抓取器拋錯      → fetchWeb **reject**，違反其JSDoc明載之「本函數不會reject」
+//  抓取器reject    → 同上
+//  回傳非物件      → status:'error' reason:'unknown'，歸因不實（它不是「無上游歸因」，是壞掉）
+//
+//依全域§8第四類契約缺陷（有A→B無B→A：兩個擴充點有邊界，第三個沒有），不需已被觀察即應修
+//
+//── 抓取器之輸出契約 ──
+//  status    'success'或'error'
+//  成功時 html 須為非空字串（否則後續判識與解析拿到的不是HTML）
+//  失敗時 reason/message 保留其自述值
+//  其餘欄位（method、snapshot、contentKind）由既有之adapt投影，本模組不重複處置
+//
+//── 錯誤邊界 ──
+//  拋錯、reject、回傳非物件、成功卻無html → 一律轉為結構化失敗結果，絕不外洩為reject
 
 
 /**
- * 使用Playwright無頭Chrome抓取網頁原始HTML
+ * 檢核抓取器之回傳值是否符合輸出契約
  *
- * 特點：
- * 無頭模式適用SPA等須執行JS渲染之頁面；
- * 可見文字過少時自動穿透Shadow DOM取得內文並重組為簡易HTML；
- * 失敗時自動重試(線性退避3至15秒)；
- * 使用playwright之chromium並指定channel='chrome'，故執行環境須已安裝Chrome瀏覽器
+ * 不合契約者轉為結構化失敗結果而非拋錯，使fetchWeb之「不會reject」契約於任何抓取器實作下皆成立
  *
- * @param {String} url 輸入待抓取網址字串
- * @param {Object} [opt={}] 輸入設定物件，預設{}
- * @param {Integer} [opt.navigationTimeoutMs=15000] 輸入頁面導航最長等待毫秒整數，預設15000
- * @param {Integer} [opt.postNavigationWaitMs=3000] 輸入導航後額外等待毫秒整數，預設3000
- * @param {Boolean} [opt.waitForRedirect=false] 輸入是否等待JS轉址完成布林值，預設false
- * @param {Integer} [opt.maxRetries=5] 輸入失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
- * @returns {Promise} 回傳Promise，resolve回傳結果物件，成功時為{status:'success',url,html,htmlLength,contentKind,method,fetchedAt,attempts}（contentKind為'raw'或'synthesized'，後者代表內容由Shadow DOM穿透後合成），失敗時為{status:'error',url,message,reason,method,fetchedAt,attempts}，本函數不會reject
+ * @param {*} r 輸入抓取器之回傳值
+ * @param {String} reason 輸入不合契約時採用之失敗歸因字串
+ * @param {String} pre 輸入錯誤訊息前綴字串
+ * @returns {Object|null} 合契約時回傳null，不合時回傳{status:'error',reason,message}
  * @example
  *
- * import fetchWebByPlaywrightHeadless from './src/fetchWebByPlaywrightHeadless.mjs'
+ * import { checkFetched } from './src/fetchContract.mjs'
  *
- * let test = async () => {
+ * console.log(checkFetched({ status: 'success', html: '&lt;p>a&lt;/p>' }, 'fetcher-error', 'curl '))
+ * // => null
  *
- *     let r = await fetchWebByPlaywrightHeadless('https://example.com/')
- *     console.log(r.status, r.htmlLength)
- *     // => 'success' 234
- *
- *     let re = await fetchWebByPlaywrightHeadless('abc')
- *     console.log(re.status, re.reason)
- *     // => 'error' 'invalid-url'
- *
- * }
- * await test()
- *     .catch((err) => {
- *         console.log(err)
- *     })
+ * console.log(checkFetched('oops', 'fetcher-error', 'curl '))
+ * // => { status: 'error', reason: 'fetcher-error', message: 'curl returned invalid result' }
  *
  */
-async function fetchWebByPlaywrightHeadless(url, opt = {}) {
-    return runPlaywright(url, opt, {
-        method: METHOD,
-        logName: 'fetchWebByPlaywrightHeadless',
-        defaultPostWaitMs: DEFAULT_POST_NAV_WAIT_MS,
-        launch: { headless: true, channel: 'chrome' },
-    })
+function checkFetched(r, reason, pre) {
+
+    if (!isobj(r)) {
+        return { status: 'error', reason, message: pre + 'returned invalid result' }
+    }
+
+    //僅檢核自稱成功者: 自稱失敗時其形狀由既有之summarizeFail處置
+    if (r.status !== 'success') {
+        return null
+    }
+
+    if (!isestr(r.html)) {
+        return { status: 'error', reason, message: pre + 'returned success without html string' }
+    }
+
+    return null
 }
 
 
-export default fetchWebByPlaywrightHeadless
+/**
+ * 以錯誤邊界執行抓取函數，確保其拋錯或reject不外洩
+ *
+ * @param {Function} fn 輸入抓取async函數
+ * @param {String} url 輸入待抓取網址字串
+ * @param {Object} opt 輸入轉傳給抓取函數之設定物件
+ * @param {String} reason 輸入失敗時採用之歸因字串
+ * @param {String} pre 輸入錯誤訊息前綴字串
+ * @returns {Promise} 回傳Promise，resolve回傳抓取器之結果物件或結構化失敗結果，本函數不會reject
+ */
+async function runFetchSafely(fn, url, opt, reason, pre) {
+
+    let r
+    try {
+        r = await fn(url, opt)
+    }
+    catch (err) {
+
+        //await同時涵蓋同步拋錯與async reject
+        return { status: 'error', reason, message: pre + 'error: ' + (err?.message || String(err)) }
+    }
+
+    return checkFetched(r, reason, pre) || r
+}
+
+
+export {
+    checkFetched,
+    runFetchSafely
+}
 </code></pre>
         </article>
     </section>
