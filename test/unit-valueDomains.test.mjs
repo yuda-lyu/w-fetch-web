@@ -77,12 +77,17 @@ describe('method與type之值域守門', function() {
 
         it('各分流與各指定方法之每一階, method皆為METHOD_*之一', function() {
 
-            //涵蓋auto之階梯全展開與四條網域分流, 使新增階或改動STEPS時若漏掉常數即在此失敗
+            //涵蓋auto之階梯全展開與四條網域分流, 使新增階或改動STEPS時若漏掉常數即在此失敗。
+            //
+            //此前這份清單的註解宣稱涵蓋四條分流, 實際只命中兩條: 'news.google.com/a' 不符
+            //JS_REDIRECT之路徑要求(須為/articles/等), yahoo根本沒有規則, wsj則整個沒列。
+            //註解宣稱的涵蓋範圍與實際不符, 是「測試全綠但保護不存在」的一種
             let urls = [
                 'https://example.com/a',
                 'https://mp.weixin.qq.com/s/a',
                 'https://www.msn.com/a',
-                'https://news.google.com/a',
+                'https://news.google.com/read/CBMi',
+                'https://www.wsj.com/articles/abc',
                 'https://finance.yahoo.com/a',
             ]
             let methods = ['auto', 'curl', 'playwright', 'playwright-headed', 'camofox']
@@ -100,6 +105,36 @@ describe('method與type之值域守門', function() {
             }
             let r = bad
             let rr = []
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('上一條之網址清單確實命中四條分流, 非只是看起來有涵蓋', function() {
+
+            //守門的守門: 上一條靠這份清單提供多樣性, 若清單其實只命中兩條,
+            //它就只驗到兩條而註解卻寫四條。此處直接斷言各分流皆被觸發
+            let plans = {
+                camofox: buildPlan('https://mp.weixin.qq.com/s/a', 'auto', true).plan.map((s) => s.key),
+                headless: buildPlan('https://www.msn.com/a', 'auto', true).plan.map((s) => s.key),
+                jsRedirect: buildPlan('https://news.google.com/read/CBMi', 'auto', true).plan.map((s) => s.key),
+                headed: buildPlan('https://www.wsj.com/articles/abc', 'auto', true).plan.map((s) => s.key),
+                none: buildPlan('https://finance.yahoo.com/a', 'auto', true).plan.map((s) => s.key),
+            }
+            let r = [
+                plans.camofox,
+                plans.headless,
+                plans.jsRedirect,
+                buildPlan('https://news.google.com/read/CBMi', 'auto', true).redirect,
+                plans.headed,
+                plans.none,
+            ]
+            let rr = [
+                ['camofox'],
+                ['headless', 'headed', 'camofox'],
+                ['headless', 'headed', 'camofox'],
+                true,
+                ['headed', 'camofox'],
+                ['curl', 'headless', 'headed', 'camofox'],
+            ]
             assert.strict.deepEqual(r, rr)
         })
 
@@ -144,8 +179,8 @@ describe('method與type之值域守門', function() {
             '<html><body>something went wrong <a href="https://x.com/">x</a></body></html>',
             '<html><body>secitptpage wx.qq.com</body></html>',
             '<html><head><meta http-equiv="refresh" content="0;url=https://a.com/"></head><body>x</body></html>',
-            '<html><body>c-wiz news.google.com</body></html>',
-            '<html><head><title>MSN</title></head><body>x</body></html>',
+            '<html><body><c-wiz>news.google.com</c-wiz></body></html>',
+            '<html><head><title>Loading...</title></head><body>x</body></html>',
             '<html><head><title>t</title></head><body><script>' + 'v'.repeat(6000) + '</script></body></html>',
             '<html><head><title>t</title></head><body><p>' + 'x'.repeat(300) + '</p></body></html>',
         ]

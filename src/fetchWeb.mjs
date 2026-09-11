@@ -34,13 +34,13 @@ import { getOptStr, getOptBool, getOptArr, getOptP0Int } from './getOpt.mjs'
  * @param {Object} [opt={}] 輸入設定物件，其餘鍵值會轉傳給實際執行抓取之函數，預設{}
  * @param {String} [opt.method='auto'] 輸入指定抓取方法字串，可為'auto'、'curl'、'playwright'、'playwright-headed'、'camofox'，'auto'代表自動階梯升級，預設'auto'。本選項塑形的是「要爬的時候用哪一種爬法」，不影響adapter之fetch掛點是否執行（後者回答的是「這次要不要爬」）
  * @param {Boolean} [opt.parse=true] 輸入是否以Readability解析出文章標題與內文布林值，false時直接回傳原始HTML，預設true
- * @param {Array} [opt.adapters=[]] 輸入站台adapter物件陣列，用於覆寫特定站台之取得、判識與解析方式，預設[]。形狀為{id,match,fetch,parse,inspect,fallback}，三個掛點分屬管線的三個階段且各自獨立：fetch取代爬取（呼叫端有官方API、快取或已登入session時）、inspect為false表此adapter命中時不做原始內容判識、parse覆寫解析；fallback為false表fetch失敗時不落回階梯。其完整契約（輸入形狀、輸出檢核、錯誤邊界）以src/adapterContract.mjs為唯一事實來源。使用端adapters排於內建adapters(gelonghui、bloomberg)之前故可覆寫之
+ * @param {Array} [opt.adapters=[]] 輸入站台adapter物件陣列，用於覆寫特定站台之取得、判識與解析方式，預設[]。形狀為{id,match,fetch,parse,inspect,fallback}，三個掛點分屬管線的三個階段且各自獨立：fetch取代爬取（呼叫端有官方API、快取或已登入session時）、inspect為false表此adapter命中時不做原始內容判識、parse覆寫解析；fallback為false表fetch失敗時不落回階梯。parse另收第四參數meta（含requestUrl、finalUrl、httpCode、method、contentKind），供其分辨內容實際來自哪裡；其完整契約（輸入形狀、輸出檢核、錯誤邊界）以src/adapterContract.mjs為唯一事實來源。使用端adapters排於內建adapters(gelonghui、bloomberg)之前故可覆寫之
  * @param {Array} [opt.detectors=[]] 輸入使用端判識器物件陣列，用於補充內建判識器所不涵蓋之攔阻頁形態（如中文與其他語系之挑戰頁），排於內建之前故優先命中，預設[]。形狀為{type,message,test}，其完整契約以src/detectorContract.mjs為唯一事實來源
  * @param {Boolean} [opt.inspect=true] 輸入是否以inspectHtml對抓取結果做原始內容判識布林值，預設true。關閉後不因判定為挑戰頁或空內容而升級。此為**整次呼叫**之總開關；若只想豁免特定站台，改以該站台adapter之inspect:false表達，範圍較精確且不必在呼叫端重寫一次網址判斷
  * @param {Object} [opt._fetchers=null] 輸入置換抓取函數之物件，僅供測試使用，鍵可為'curl'、'playwrightHeadless'、'playwrightHead'、'camofox'，值為與對應fetchWebByXxx同簽章之函數，未給之鍵沿用實際實作，預設null
  * @param {Boolean} [opt.showLog=true] 輸入是否顯示階梯升級過程訊息布林值，預設true
  * @param {Integer} [opt.maxRetries=5] 輸入各抓取函數失敗時最大重試次數整數，含初始共執行maxRetries+1次，預設5
- * @returns {Promise} 回傳Promise，resolve回傳結果物件，其中attempts為各階嘗試紀錄陣列，成功之紀錄為{method,status:'success',htmlLength}(htmlLength為原始HTML長度，與頂層contentLength之正文長度不同)，失敗為{method,status:'failed',reason,message}，被判識或解析失敗為{method,status:'blocked',type,reason,message}（判識所致者reason與type同值）；經adapter之fetch掛點者其method為'adapter'且紀錄與頂層皆另帶adapterId；parse=true成功時為{status:'success',url,title,content,contentLength,method,fetchedAt,attempts}，parse=false成功時為{status:'success',url,html,method,fetchedAt,attempts}，失敗時為{status:'error',url,message,fetchedAt,attempts}，本函數不會reject
+ * @returns {Promise} 回傳Promise，resolve回傳結果物件，其中attempts為各階嘗試紀錄陣列，成功之紀錄為{method,status:'success',htmlLength}(htmlLength為原始HTML長度，與頂層contentLength之正文長度不同)，失敗為{method,status:'failed',reason,message}，被判識或解析失敗為{method,status:'blocked',type,reason,message}（判識所致者reason與type同值）；經adapter之fetch掛點者其method為'adapter'且紀錄與頂層皆另帶adapterId；parse=true成功時為{status:'success',url,title,content,contentLength,method,fetchedAt,attempts}，parse=false成功時為{status:'success',url,html,method,fetchedAt,attempts}；內容來自轉址後之另一網址時另帶finalUrl（url為本套件最後實際發出請求之網址，finalUrl為內容實際來源，兩者相同時不輸出該欄），失敗時為{status:'error',url,message,fetchedAt,attempts}，本函數不會reject
  * @example
  *
  * import fetchWeb from './src/fetchWeb.mjs'

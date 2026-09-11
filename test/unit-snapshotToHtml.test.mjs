@@ -97,8 +97,9 @@ describe('兩種合成物之形狀差異', function() {
     //
     //兩者都以contentKind='synthesized'交給inspectHtml, 但看可見文字的判識器
     //(platform wrapper與empty)對同一份內容會得到不同結果。
-    //camofox階目前inspect為false(見buildPlan)故不影響, 本測試在於: 若日後開啟該階判識,
-    //此差異即成為行為分歧, 屆時本測試會指出差異之所在而非讓它靜默生效
+    //**camofox階現已做判識**(該階原為inspect:false, 其兩條理由皆不成立故已收斂),
+    //故此差異是現行的行為分歧而非潛在的: 同一份內容經camofox取得者, 其標題會被計入可見文字,
+    //於閘門邊界上可能與playwright側判定相反。本測試在於使該差異可見而非讓它靜默生效
     it('camofox合成物之標題計入可見文字, playwright合成物則否', function() {
         let title = 'Access Denied'
         let body = 'hello world'
@@ -112,9 +113,12 @@ describe('兩種合成物之形狀差異', function() {
     it('內容量落在閘門邊界時, 兩種合成物之判定確實相反', function() {
 
         //body取497字: playwright側之可見文字即497(低於SPARSE_VISIBLE_MAX之500),
-        //camofox側因標題「MSN」與空白亦計入而成為501(高於閘門)。
-        //於是同一份內容, 一邊被判為wrapper殼頁而升級, 另一邊被當成正常內容放行
-        let title = 'MSN'
+        //camofox側因標題與空白亦計入而成為505(高於閘門)。
+        //於是同一份內容, 一邊被判為wrapper殼頁而升級, 另一邊被當成正常內容放行。
+        //
+        //標題原用'MSN', 該條目已自WRAPPER_TITLES移除(實測其真殼頁由empty接住,
+        //留著只換來MSNBC那種跨站誤判), 故改用仍在清單內的通用載入詞
+        let title = 'Loading'
         let body = 'x'.repeat(497)
         let camofox = snapshotToHtml('- paragraph: ' + body, title)
         let playwright = '<!DOCTYPE html><html><head><title>' + title + '</title></head><body><article><p>' + body + '</p></article></body></html>'
@@ -125,7 +129,7 @@ describe('兩種合成物之形狀差異', function() {
             estimateVisibleText(camofox).length,
             inspectHtml(camofox, opt).type,
         ]
-        let rr = [497, 'redirect', 501, 'pass']
+        let rr = [497, 'redirect', 505, 'pass']
         assert.strict.deepEqual(r, rr)
     })
 

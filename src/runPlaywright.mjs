@@ -54,7 +54,9 @@ async function _runOnce(url, opt, cfg, o) {
         let extra = cfg.afterNavigate ? await cfg.afterNavigate(page, opt) : {}
         let { html, contentKind } = await extractPageContent(page)
 
-        return { ok: true, html, contentKind, extra, httpCode }
+        //內容實際來源之網址: 轉址(含JS轉址)後page.url()即為它, 與輸入之url可能不同。
+        //navigateWithRedirectWait更是刻意等到host脫離原host, 故該路徑上兩者必然不同
+        return { ok: true, html, contentKind, extra, httpCode, finalUrl: page.url() }
     }
     catch (err) {
         return { ok: false, message: err.message || String(err) }
@@ -127,6 +129,7 @@ async function runPlaywright(url, opt, cfg) {
 
             //與curl階之成功結果同形: 該階自初版即回報httpCode, 此階先前沒有
             httpCode: r.httpCode,
+            finalUrl: r.finalUrl,
             ...r.extra,
             method: cfg.method,
             fetchedAt,

@@ -6,8 +6,21 @@ import { CHALLENGE_RESOURCES } from './challengeResources.mjs'
 import { isValidDetector, normalizeDetector, ORIGIN_CUSTOM } from './detectorContract.mjs'
 
 
-//轉址與載入interstitial殼頁之標題關鍵字
-let WRAPPER_TITLES = ['google news', 'redirecting', 'loading', 'msn']
+//載入與轉址interstitial之標題前綴
+//
+//**以前綴比對, 且只留不綁站台的通用載入詞**——兩者都是修過的:
+//
+//一、原為子字串比對(includes), 造成跨站誤判: 實測標題「MSNBC 新聞台」被'msn'命中、
+//    「Preloading 技術」被'loading'命中。**把B站的正常頁面判成A站的殼頁**是最壞的一種誤判,
+//    而且有連鎖效果——判為redirect會使runPlan把後續階改為等待轉址。
+//    改前綴後與CHALLENGE_TITLE_PREFIXES一致(真interstitial之標題是「Loading...」而非「Preloading」)
+//
+//二、原含'msn'與'google news'兩個站台名, 已移除。2026-09-10實抓量測顯示它們不提供任何保護:
+//      MSN殼頁          title="MSN"(完全相等) bytes=35786 visible=0 → empty本來就接得住
+//      Google News殼頁  title="Google 新聞"(中文) → 'google news'根本認不得; 該站另有<c-wiz規則
+//    亦即這兩個條目的淨效果只有MSNBC那種跨站誤判。
+//    msn更是被歸錯類: msn.com是SPA不是轉址服務, 判為redirect會讓有頭階空等轉址逾時(實測20秒)
+let WRAPPER_TITLES = ['redirecting', 'loading']
 
 
 //「幾乎無實質內容」之可見文字上限
@@ -218,6 +231,13 @@ let DETECTORS = [
         type: DETECT_VERIFY,
         message: 'WeChat verification page',
         evidence: 'structural',
+
+        //**刻意維持weak**。與上方Google News那條的差別在於證據強弱不同:
+        //該條有實測數字(真殼頁visible約1822, 超過閘門故必須標strong), 本條沒有——
+        //我手上沒有真實微信驗證頁的量測值, 不知道它的可見文字是否超過閘門。
+        //在沒有量測的情況下標strong, 是拿「談論該主題的正常長文被誤殺」去換一個未經證實的漏判,
+        //屬CLAUDE.md原則五所禁之「未經自己查證即沿用說法」。
+        //取得真實頁面量測值後再回頭決定
         test: (c) => c.lower.includes('secitptpage') && c.lower.includes('wx.qq.com'),
     },
 
@@ -236,18 +256,39 @@ let DETECTORS = [
         type: DETECT_REDIRECT,
         message: 'Google News wrapper',
         evidence: 'structural',
-        test: (c) => c.lower.includes('c-wiz') && c.lower.includes('news.google.com'),
+
+        //**本條刻意維持weak(受內容量閘門管轄), 那個閘門正是它能只擋殼頁的原因。**
+        //
+        //2026-09-10實抓三種Google News頁面:
+        //  /read/ 真殼頁    visible=0       ← 要擋。閘門(500)不作用, 弱判準照常命中
+        //  首頁             visible=724~775 ← 不該擋, 它是listing不是殼頁
+        //  /topics/         visible=13359   ← 不該擋, Readability可解析出萬字內容
+        //
+        //曾有一輪把本條改標strong, 理由是「真殼頁visible約1822, 超過閘門故不會執行」——
+        //**那個1822是錯的數字**, 抄自上一輪自己寫的註解而未重量(實際為724/775, 且真殼頁是0)。
+        //改標strong後真實/topics/頁由success變成error, 是一次實際迴歸。
+        //教訓見CLAUDE_experience.md二之1: 上一輪的自己寫的註解, 這一輪當成事實繼承。
+        //
+        //判準粒度則保留改進: 比對'<c-wiz'這個**元素起始標記**而非裸字'c-wiz',
+        //使談論Google News版面的短文不致誤判(裸字連內文提及都會命中)。真殼頁的c-wiz是HTML元素,
+        //文章裡談到它時是純文字, 貼範例碼則已被轉義為&lt;c-wiz
+        test: (c) => c.lower.includes('<c-wiz') && c.lower.includes('news.google.com'),
     },
 
     //轉址與載入interstitial殼頁: 標題含平台或載入關鍵字「且」頁面幾乎無實質內容, 才判定。
-    //雙條件缺一不可, 只靠標題子字串會把標題剛好含關鍵字的正常文章誤殺(實測Wikipedia
-    //「Loading screen」visible約13k、「MSN」約49k被誤判為轉址頁, 導致整篇抓取失敗), 真殼頁
-    //visible近0(實測MSN殼=0、Google News=1822, 後者另由上方c-wiz規則攔)
+    //雙條件缺一不可, 只靠標題前綴會把標題剛好如此開頭的正常頁面誤殺(實測Wikipedia
+    //「Loading screen」visible約13k被誤判為轉址頁, 導致整篇抓取失敗), 真interstitial之
+    //visible近0。
+    //
+    //本條**刻意維持weak**: 判準只是標題前綴, 換成strong會讓標題以'loading'開頭的正常長文
+    //全被誤殺, 而那正是加閘門要修的東西。
+    //殘餘之誤判帶為「visible介於200至500且標題以該些詞開頭」(如標題為「Loading Dock 物流」
+    //之小型頁面), 低於200者另由empty攔下, 高於500者不受弱判準影響
     {
         type: DETECT_REDIRECT,
         message: (c) => 'platform wrapper: "' + c.title + '"',
         evidence: 'semantic',
-        test: (c) => WRAPPER_TITLES.some((t) => c.titleLower.includes(t)),
+        test: (c) => WRAPPER_TITLES.some((t) => c.titleLower.startsWith(t)),
     },
 
     //空內容與無實質可見文字
@@ -278,6 +319,7 @@ let DETECTORS = [
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {String} [opt.contentKind='raw'] 輸入內容形態字串，'raw'為原始文件，'synthesized'為合成內容，預設'raw'
  * @param {Array} [opt.detectors=[]] 輸入使用端判識器陣列，排於內建判識器之前故優先命中，其契約以src/detectorContract.mjs為唯一事實來源，預設[]
+ * @param {Boolean} [opt.builtin=true] 輸入是否比對內建判識器布林值，預設true。false時只比對opt.detectors所註冊者，供adapter之inspect:false豁免「套件對該站台之通用猜測」而不動呼叫端自己的判準
  * @returns {Object} 回傳檢測結果物件，格式為{pass,type,message}，其中pass為是否通過布林值，type為'pass'、'captcha'、'verify'、'redirect'、'empty'之一，message為說明字串
  * @example
  *
@@ -306,7 +348,19 @@ function inspectHtml(html, opt = {}) {
     let custom = (Array.isArray(opt?.detectors) ? opt.detectors : [])
         .filter(isValidDetector)
         .map(normalizeDetector)
-    let all = custom.length > 0 ? [...custom, ...DETECTORS] : DETECTORS
+
+    //builtin=false時只跑使用端註冊者
+    //
+    //供adapter之inspect:false使用。該宣告的語意是「此站台不做**套件的**通用判識」,
+    //它要豁免的是套件對全世界頁面所下的猜測, 不是呼叫端自己下的判準。
+    //此前兩者共用一個布林, 於是adapter一宣告豁免, 呼叫端註冊的判識器也一起失效——
+    //而detectorContract檔頭明寫「套件保證註冊的判識器一定會被比對」, 該保證當時不成立。
+    //兩個不同擁有者共用一個開關, 是CLAUDE_rulebook.md〇「閘門的軸與被閘的軸必須是同一個」所禁。
+    //
+    //opt.inspect為總開關則不在此列: 它是呼叫端對本次呼叫的明確指示, 兩邊都關是他自己的決定
+    let useBuiltin = opt?.builtin !== false
+    let base = useBuiltin ? DETECTORS : []
+    let all = custom.length > 0 ? [...custom, ...base] : base
 
     let c = _mkCtx(html)
 

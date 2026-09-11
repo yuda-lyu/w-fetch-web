@@ -89,7 +89,10 @@ async function fetchWebByCurl(url, opt = {}) {
                 [
                     '-s', '-L', '--compressed',
                     '--max-time', String(Math.ceil(timeoutMs / 1000)),
-                    '--write-out', '\n%{http_code}',
+                    //末兩行依序為http_code與url_effective
+                    //url_effective即**跟隨-L轉址後實際取得內容的網址**, 與輸入之url可能不同,
+                    //而此前它被丟掉, 呼叫端無從得知內容其實來自別站
+                    '--write-out', '\n%{http_code}\n%{url_effective}',
                     '-H', 'User-Agent: ' + ua,
                     '-H', 'Accept: text/html,application/xhtml+xml',
                     '-H', 'Accept-Language: ' + acceptLang,
@@ -99,8 +102,9 @@ async function fetchWebByCurl(url, opt = {}) {
                 { encoding: 'utf8', timeout: timeoutMs + 5000, maxBuffer: 10 * 1024 * 1024, windowsHide: true }
             )
 
-            //解析, 末行為http_code
+            //解析, 末兩行依序為http_code與url_effective(見上方--write-out)
             let lines = raw.trimEnd().split('\n')
+            let finalUrl = lines.pop()
             let httpCode = parseInt(lines.pop(), 10) || 0
             let html = lines.join('\n')
             lastHttpCode = httpCode
@@ -126,7 +130,7 @@ async function fetchWebByCurl(url, opt = {}) {
                 }
             }
 
-            return { ok: true, html, httpCode }
+            return { ok: true, html, httpCode, finalUrl }
         }
         catch (err) {
             let message = err.message || String(err)
@@ -144,6 +148,9 @@ async function fetchWebByCurl(url, opt = {}) {
             htmlLength: r.html.length,
             contentKind: 'raw',
             httpCode: r.httpCode,
+
+            //內容實際來源之網址(跟隨-L轉址後), 與輸入之url可能不同
+            finalUrl: r.finalUrl,
             method: METHOD,
             fetchedAt,
             attempts: r.attempts,

@@ -66,6 +66,52 @@ describe('使用端判識器之接線', function() {
             assert.strict.deepEqual(r, rr)
         })
 
+        it('adapter之inspect:false不得關掉呼叫端自己註冊的判識器', async function() {
+
+            //detectorContract檔頭明寫「套件保證註冊的判識器一定會被比對」, 而此前
+            //adapter一宣告inspect:false就把呼叫端的判識器一起關掉——兩個不同擁有者共用一個布林。
+            //adapter之inspect要豁免的是**套件對全世界頁面所下的猜測**, 不是呼叫端自己下的判準。
+            //屬「閘門的軸與被閘的軸必須是同一個」之違反, 亦是no-op形狀的第四次
+            let adapters = [{
+                id: 'mysite',
+                match: /127\.0\.0\.1/,
+                parse: () => ({ success: true, title: 'BY-ADAPTER', content: 'C'.repeat(60) }),
+                inspect: false,
+            }]
+            let t = await fetchWeb(svr.url('/cnchallenge'), { ...optBase, detectors: mkDet(), adapters })
+            let r = [t.status, t.reason, t.message]
+            let rr = ['error', 'captcha', '中文攔阻頁']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('adapter之inspect:false仍豁免內建判識器', async function() {
+
+            //對照組: 上一條不得反過來把豁免整個取消掉。內建之empty仍須被關掉,
+            //否則adapter根本輪不到被呼叫——那是該欄位存在的理由
+            let big = '<html><head><title>t</title></head><body><script>' + 'v'.repeat(6000) + '</script></body></html>'
+            let fs = { curl: async () => ({ method: 'curl', status: 'success', html: big }) }
+            let adapters = [{
+                id: 'mysite',
+                match: /example\.com/,
+                parse: () => ({ success: true, title: 'BY-ADAPTER', content: 'C'.repeat(60) }),
+                inspect: false,
+            }]
+            let t = await fetchWeb('https://example.com/a', { method: 'curl', maxRetries: 0, showLog: false, _fetchers: fs, detectors: mkDet(), adapters })
+            let r = [t.status, t.title]
+            let rr = ['success', 'BY-ADAPTER']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('opt.inspect=false則兩邊都關, 那是呼叫端對本次呼叫的明確指示', async function() {
+
+            //與上一條刻意不同: opt是總開關, 呼叫端自己關掉全部判識是他的決定;
+            //adapter之inspect則只擁有「套件的通用判識」這一半
+            let t = await fetchWeb(svr.url('/cnchallenge'), { ...optBase, detectors: mkDet(), inspect: false })
+            let r = [t.status, t.title]
+            let rr = ['success', '安全验证']
+            assert.strict.deepEqual(r, rr)
+        })
+
         it('不合契約之判識器經fetchWeb亦只略過, 不使抓取失敗', async function() {
             let bad = [null, { type: 'bogus', message: 'm', test: () => true }]
             let t = await fetchWeb(svr.url('/article'), { ...optBase, detectors: bad })

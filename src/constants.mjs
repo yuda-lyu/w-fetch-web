@@ -63,6 +63,7 @@ let REASONS = Object.freeze({
     'adapter-fetch-error': 'adapter之fetch拋錯或回傳形狀不合契約(顯性回報, 不落回階梯)',
     'adapter-fetch-skip': 'adapter之fetch表明此網址不適用, 改由階梯抓取',
     'fetcher-error': '抓取器拋錯或回傳形狀不合契約',
+    'internal-address': '套件自行推導之網址(轉址參數提取)於抓取後解析至內網或保留位址',
 
     //判識所致
     //

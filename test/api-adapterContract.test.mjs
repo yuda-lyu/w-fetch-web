@@ -176,9 +176,12 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
 
         it('合法之轉址參數仍可正確提取目標網址並續走完整流程', async function() {
 
-            //目標指向本機測試伺服器, 使curl該階即成功, 不觸發瀏覽器階梯
-            let target = svr.url('/article')
-            let t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=' + encodeURIComponent(target), { showLog: false, maxRetries: 0 })
+            //目標刻意用公開網域而非本機測試伺服器: 提取出之目標須通過內網位址檢核,
+            //以127.0.0.1為目標會(正確地)被擋下, 那條路徑另由「不提取內網目標」一組驗證。
+            //改以假抓取器供應內容, 使本條專注於「提取→以目標網址重走流程」這件事
+            let target = 'https://example.com/real-article'
+            let fs = { curl: async (u) => ({ method: 'curl', status: 'success', html: htmlArticle, url: u }) }
+            let t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=' + encodeURIComponent(target), { showLog: false, maxRetries: 0, _fetchers: fs })
             let r = [t.status, t.url, t.title]
             let rr = ['success', target, 'W Fetch Web Test Article']
             assert.strict.deepEqual(r, rr)

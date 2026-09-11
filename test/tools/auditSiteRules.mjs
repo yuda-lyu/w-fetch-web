@@ -4,11 +4,14 @@ import path from 'path'
 
 //站台特化知識之盤點指令: `node test/tools/auditSiteRules.mjs`
 //
-//本套件的站台知識散在三個檔, 且**同一個站台可能同時出現在多處**。
+//本套件的站台與廠商知識散在多個檔, 且**同一個站台可能同時出現在多處**。
 //此前曾只 grep 其中兩個檔就下「沒有任何站台同時出現在兩處」的結論, 而 msn、news.google
 //當時就同時出現在 routeByUrl 與 inspectHtml——列舉軸的成員時 grep 範圍不夠廣, 結論即錯。
-//故把「範圍」寫成可重跑的腳本而非留在記憶裡: 三個檔皆為本腳本之掃描對象,
-//新增第四個存放站台知識的檔時, 須同時在 SOURCES 登記, 否則盤點結果會再度不完整。
+//故把「範圍」寫成可重跑的腳本而非留在記憶裡。
+//
+//**但範圍本身也會漏, 而且已經漏過兩次**（見下方 selfCheck）。所以本腳本不只掃 SOURCES,
+//還會反過來檢查「SOURCES 以外的 src 檔案有沒有站台或廠商知識」, 有就以非零離開碼結束。
+//新增存放此類知識的檔案時須在 SOURCES 登記, 忘了登記會被自檢擋下而非靜默通過。
 //
 //輸出為站台全集 × 出現處, 供對照規則帳本之站點數
 
@@ -68,14 +71,72 @@ let SOURCES = [
         file: 'src/challengeResources.mjs',
         label: 'challengeResources',
         pick: (t) => {
+            let out = []
             let m = t.match(/CHALLENGE_RESOURCES = \[([^\]]*)\]/)
-            if (!m) {
-                return []
+            if (m) {
+                out.push(...[...m[1].matchAll(/'([^']+)'/g)].map((v) => v[1]))
             }
-            return [...m[1].matchAll(/'([^']+)'/g)].map((v) => v[1])
+
+            //單獨常數形態之廠商知識(CF_FRAME_HOST等)亦須計入, 否則新增一個又是一次漏
+            for (let mm of t.matchAll(/^let [A-Z_]+ = '([^']+)'$/gm)) {
+                out.push(mm[1])
+            }
+            return out
         },
     },
 ]
+
+
+//**掃描範圍之自檢**：src內任何檔案出現廠商或站台識別字串卻不在SOURCES內，即為漏掃
+//
+//本腳本寫來防「grep範圍不夠就下結論」，而它自己已經漏過兩次：
+//第一次漏掉challengeResources.mjs，第二次漏掉fetchWebByPlaywrightHead.mjs內
+//手寫的challenges.cloudflare.com與.cf-turnstile——後者更嚴重，因為那是
+//challengeResources.mjs自稱擁有的知識的第三份複本。
+//**防漏的工具不會因為它的用途是防漏而自動免疫**，故加本節：範圍本身也要被盤點。
+let KNOWN_TOKENS = [
+    'challenges.cloudflare.com', 'hcaptcha.com', 'captcha-delivery.com', 'edgesuite.net',
+    'perimeterx', 'cf-turnstile', 'cf-challenge-running', 'secitptpage', 'c-wiz',
+    'wx.qq.com', 'x.com', 'twitter.com', 'news.google.com', 'msn.com', 'wsj.com',
+    'linkedin.com', 'youtube.com', 'gelonghui.com', 'bloomberg.com', 'weixin.qq.com',
+]
+
+
+//取一個檔的「可比對程式碼」：去註解，並把regex跳脫還原
+//
+//**跳脫還原這一步是自檢能不能成立的關鍵**。本專案的路由是以regex字面量寫的，
+//網域中的點一律跳脫為 `\.`，故 `code.includes('wsj.com')` 恆為 false——
+//自檢第一版就是這樣：把 routeByUrl.mjs 自 SOURCES 拿掉，自檢仍回報「通過」且離開碼 0。
+//**一個看不見本專案主要書寫形態的自檢，等於沒有自檢**（同一支腳本上的第三次同型錯誤）
+function codeOf(file) {
+    let t = fs.readFileSync(file, 'utf8')
+    let code = t.split('\n').filter((line) => {
+        let s = line.trim()
+        return !s.startsWith('//') && !s.startsWith('*') && !s.startsWith('/*')
+    }).join('\n')
+
+    //regex字面量之跳脫還原: \. → . ，使 /wsj\.com\// 與 'wsj.com' 可比對
+    return code.replace(/\\\./g, '.')
+}
+
+
+function selfCheck(scanned) {
+    let dir = 'src'
+    let leaks = []
+    for (let fn of fs.readdirSync(dir).filter((v) => v.endsWith('.mjs'))) {
+        let rel = dir + '/' + fn
+        if (scanned.includes(rel)) {
+            continue
+        }
+        let code = codeOf(path.join(dir, fn))
+        for (let tok of KNOWN_TOKENS) {
+            if (code.includes(tok)) {
+                leaks.push([rel, tok])
+            }
+        }
+    }
+    return leaks
+}
 
 
 //同一站台在三處的不同寫法
@@ -93,6 +154,12 @@ let ALIAS = {
 
 //非站台之條目: WRAPPER_TITLES內混有通用載入關鍵字, 它們不屬於任何特定站台
 let NON_SITE = ['loading', 'redirecting']
+
+
+//CSS選擇器形態之條目不計入站台全集, 但仍須被掃描——掃描是為了自檢的擁有權, 計數是為了站台分佈
+function isSelector(v) {
+    return v.startsWith('#') || v.startsWith('.') || v.includes(', ')
+}
 
 
 //把各處取得之識別字串正規化為可互相比對之站台鍵
@@ -123,7 +190,7 @@ function main() {
         counts.push([s.label, raw.length])
         for (let v of raw) {
             let k = toKey(v)
-            if (NON_SITE.includes(k)) {
+            if (NON_SITE.includes(k) || isSelector(v)) {
                 continue
             }
             if (!byKey.has(k)) {
@@ -153,7 +220,31 @@ function main() {
         let where = [...m.entries()].map(([l, vs]) => l + '[' + vs.join('|') + ']').join('  ')
         console.log(k.padEnd(16) + where)
     }
+
+    //掃描範圍自檢: 有漏掃即以非零離開碼結束, 使它不會靜默通過
+    let leaks = selfCheck(SOURCES.map((s) => s.file))
+    console.log('')
+    if (leaks.length === 0) {
+        console.log('掃描範圍自檢: 通過（SOURCES 以外之 src 檔案未出現已知廠商或站台識別字串）')
+        return
+    }
+    console.log('掃描範圍自檢: **未通過** — 下列檔案含站台或廠商知識卻不在 SOURCES 內：')
+    for (let [f, tok] of leaks) {
+        console.log('  ' + f + '  →  ' + tok)
+    }
+    process.exitCode = 1
 }
 
 
-main()
+//以指令直接執行時才輸出報表; 被測試import時只取用其函數
+if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('test/tools/auditSiteRules.mjs')) {
+    main()
+}
+
+
+export {
+    SOURCES,
+    KNOWN_TOKENS,
+    selfCheck
+}
+export default main

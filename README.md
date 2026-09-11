@@ -105,6 +105,11 @@ await test()
 
 經adapter之`fetch`掛點者其`method`為`'adapter'`，且該筆紀錄另帶`adapterId`。
 
+#### url 與 finalUrl:
+結果之`url`是**本套件最後實際發出請求的網址**（含轉址參數提取後之目標）；內容若來自HTTP轉址或JS轉址之後的另一個網址，另帶`finalUrl`欄。一句話分辨：**`url`是我要了什麼，`finalUrl`是我拿到了什麼**。兩者相同時不輸出`finalUrl`，故呼叫端據「有沒有這個欄位」即知本次有無轉址。
+
+兩者刻意分開：知識庫類呼叫端以`url`對回自己送出的網址、當主鍵，把它改成最終值會拿走那個能力；而不給`finalUrl`則使「內容其實來自別站」無從察覺。
+
 判識所致之`blocked`，其`reason`與`type`同值，故呼叫端可一律讀`reason`取得失敗歸因。
 
 #### Reasons:
@@ -129,6 +134,7 @@ await test()
 | `adapter-fetch-error` | adapter之`fetch`拋錯或回傳形狀不合契約（不落回階梯） | 否，須修adapter |
 | `adapter-fetch-skip` | adapter之`fetch`表明此網址不適用，改由階梯抓取 | — |
 | `fetcher-error` | 抓取器拋錯或回傳形狀不合契約 | 否 |
+| `internal-address` | 套件自行推導之網址（轉址參數提取）於抓取後解析至內網或保留位址 | 否 |
 | `captcha` | 判識為CAPTCHA或反爬蟲攔阻頁 | 否，該站需更高階抓取方法 |
 | `verify` | 判識為驗證頁 | 否 |
 | `redirect` | 判識為轉址包裝頁 | 否 |
@@ -171,6 +177,8 @@ let r = await fetchWeb(url, {
 ```
 
 `match`為函數時其回傳值會作為`ctx`傳給`parse`（回`true`時`ctx`為`null`）。`parse`回傳`success:false`時可自報`reason`，該值原樣保留至頂層與`attempts`。
+
+`parse`另有**第四個參數`meta`**，形狀為`{requestUrl, finalUrl, httpCode, method, contentKind}`。它存在的理由是：adapter必須以**請求網址**挑選（抓取前才知道要不要用`fetch`掛點），但內容可能來自轉址後的別站——`navigateWithRedirectWait`更是刻意等到host脫離原host。故套件把「這份內容實際來自哪裡」交給adapter，由知道該站台的人自己判斷，而不是由套件代為猜測。既有的三參數adapter不受影響（JS對多餘參數天生相容）。
 
 **`inspect: false` 的用途**：通用判識會把「內嵌結構化資料但可見文字極少」的頁面判為空內容而升級，於是註冊了adapter、自知如何解析該站台的呼叫端，其adapter根本輪不到被呼叫。此欄使豁免範圍**只限該adapter命中之網址**；`opt.inspect`則是整次呼叫的總開關。
 

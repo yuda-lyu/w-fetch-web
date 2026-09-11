@@ -21,8 +21,9 @@ import { fetchedAtLocal } from './fetchedAt.mjs'
 function adapt(r) {
     if (r.status === 'success') {
 
-        //contentKind須列入白名單, 否則會於此被靜默丟棄, 使runPlan無從得知該內容是否為合成物
-        return { success: true, html: r.html, method: r.method, snapshot: r.snapshot, contentKind: r.contentKind }
+        //contentKind與finalUrl皆須列入白名單, 否則會於此被靜默丟棄——
+        //前者使runPlan無從得知該內容是否為合成物, 後者使呼叫端與解析器無從得知內容實際來自哪裡
+        return { success: true, html: r.html, method: r.method, snapshot: r.snapshot, contentKind: r.contentKind, finalUrl: r.finalUrl }
     }
     return { success: false, method: r.method, reason: r.reason || 'unknown', message: r.message }
 }
@@ -84,6 +85,19 @@ function finalize(url, result, attempts) {
         //說不出是哪一個, 而呼叫端可能同時註冊多個。未經該掛點者不輸出此欄, 維持既有形狀
         if (isestr(result.adapterId)) {
             out.adapterId = result.adapterId
+        }
+
+        //內容實際來源之網址
+        //
+        //`url` 是**本套件最後實際發出請求的網址**（含轉址參數提取後之目標），
+        //`finalUrl` 是**這份內容實際來自哪裡**（跟隨HTTP轉址或JS轉址之後）。
+        //一句話分辨: url是我要了什麼, finalUrl是我拿到了什麼。
+        //
+        //兩者為何必須分開: 呼叫端(尤其知識庫類)以url對回自己送出的網址、當主鍵,
+        //把url改成最終值會拿走那個能力; 而不給finalUrl則使「內容其實來自別站」無從察覺——
+        //實測adapter曾收到「A站的網址配B站的內容」。取不到時省略該欄而非給假值
+        if (isestr(result.finalUrl) && result.finalUrl !== url) {
+            out.finalUrl = result.finalUrl
         }
         return out
     }

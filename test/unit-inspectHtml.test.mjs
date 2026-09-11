@@ -48,14 +48,19 @@ describe('inspectHtml', function() {
 
     it('平台殼頁須標題與內容雙條件同時成立才判為redirect', function() {
 
-        //標題含關鍵字且內容近乎為空, 判為殼頁
-        let rWrapper = inspectHtml('<html><head><title>MSN</title></head><body><div></div></body></html>').type
+        //標題以載入詞開頭且內容近乎為空, 判為殼頁
+        let rWrapper = inspectHtml('<html><head><title>Loading...</title></head><body><div></div></body></html>').type
 
-        //標題含關鍵字但內容充足, 不可誤殺為殼頁
-        let rReal = inspectHtml('<html><head><title>MSN</title></head><body><p>' + 'abcde '.repeat(200) + '</p></body></html>').type
+        //標題以載入詞開頭但內容充足, 不可誤殺為殼頁
+        let rReal = inspectHtml('<html><head><title>Loading...</title></head><body><p>' + 'abcde '.repeat(200) + '</p></body></html>').type
 
-        let r = [rWrapper, rReal]
-        let rr = ['redirect', 'pass']
+        //站台名(msn/google news)已自清單移除: 實測其真殼頁另有更可靠的攔法
+        //(MSN殼 35786 bytes/visible 0 由empty接住; Google News由<c-wiz規則接住),
+        //而留著它們的淨效果只有「MSNBC被判成MSN殼頁」這種跨站誤判
+        let rCrossSite = inspectHtml('<html><head><title>MSNBC 新聞台</title></head><body><p>短</p></body></html>').type
+
+        let r = [rWrapper, rReal, rCrossSite]
+        let rr = ['redirect', 'pass', 'pass']
         assert.strict.deepEqual(r, rr)
     })
 
@@ -104,7 +109,7 @@ describe('判識器之證據形態分群', function() {
         ['Cloudflare challenge', 'the class cf-challenge-running is set during the check'],
         ['Cloudflare Turnstile', 'the widget cf-turnstile renders a checkbox for users'],
         ['WeChat verification page', 'the page secitptpage on wx.qq.com asks users to verify'],
-        ['Google News wrapper', 'the c-wiz element on news.google.com wraps each card'],
+        ['Google News wrapper', 'a <c-wiz> element from news.google.com wraps each card'],
     ]
 
     let synth = (text) => '<!DOCTYPE html><html><head><title>某篇技術文章</title></head><body><article>' +
@@ -374,8 +379,8 @@ describe('判識器之比對順序(R23)', function() {
             ['<html><body>something went wrong <a href="https://x.com/">x</a></body></html>', 'X/Twitter error page'],
             ['<html><body>secitptpage wx.qq.com</body></html>', 'WeChat verification page'],
             ['<html><head><meta http-equiv="refresh" content="0;url=https://a.com/"></head><body>x</body></html>', 'meta refresh redirect'],
-            ['<html><body>c-wiz news.google.com</body></html>', 'Google News wrapper'],
-            ['<html><head><title>MSN</title></head><body>x</body></html>', 'platform wrapper: "MSN"'],
+            ['<html><body><c-wiz>news.google.com</c-wiz></body></html>', 'Google News wrapper'],
+            ['<html><head><title>Loading...</title></head><body>x</body></html>', 'platform wrapper: "Loading..."'],
         ]
         let r = probes.map(([html]) => inspectHtml(html).message)
         let rr = probes.map(([, msg]) => msg)
@@ -440,6 +445,58 @@ describe('個別判識器之案例', function() {
             return inspectHtml('<html><head><title>Error</title></head><body><p>something went wrong at ' + d + '</p></body></html>').type
         })
         let rr = ['pass', 'pass', 'pass']
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('Google News判識器只擋殼頁, 不擋listing頁(內容量閘門之作用)', function() {
+
+        //**本條記錄一次由錯誤數字造成的迴歸**。
+        //
+        //曾有一輪把此判識器標strong, 理由是「實測真實Google News殼頁可見文字約1822,
+        //遠高於閘門故不會執行」。2026-09-10 實抓三種頁面, 那個數字是錯的:
+        //  /read/ 真殼頁  visible=0        ← 閘門根本不作用, 弱判準本來就命中
+        //  首頁           visible=724~775
+        //  /topics/       visible=13359    ← Readability 可解析出萬字內容
+        //1822 抄自上一輪自己寫的註解而未重量。改標strong後真實/topics/頁由success變error。
+        //
+        //閘門在這裡不是障礙, 是它能只擋殼頁的原因: 殼頁 visible≈0, listing 頁動輒上萬,
+        //兩者分野極大, 餘裕充足
+        let mk = (n) => '<html><head><title>Google 新聞</title></head><body><c-wiz jsrenderer="x">' +
+            '<a href="https://news.google.com/read/CBMi">連結</a><p>' +
+            '新聞標題摘要與來源媒體名稱。'.repeat(n) + '</p></c-wiz></body></html>'
+        let r = [
+            inspectHtml(mk(0)).type,
+            inspectHtml(mk(3)).type,
+            inspectHtml(mk(200)).pass,
+            inspectHtml(mk(1200)).pass,
+        ]
+        let rr = ['redirect', 'redirect', true, true]
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('判準粒度為元素起始標記, 談論該主題之短文不受影響', function() {
+
+        //粒度改進與強度無關, 兩者分開看: 比對'<c-wiz'元素起始標記而非裸字'c-wiz',
+        //使談論Google News版面的**短文**不致誤判(長文本來就有閘門保護, 短文沒有)
+        let short = (s) => '<html><head><title>談新聞聚合器</title></head><body><p>' + s + '</p></body></html>'
+        let r = [
+            inspectHtml(short('c-wiz 元素用於 news.google.com 之版面設計。')).pass,
+            inspectHtml(short('範例碼為 &lt;c-wiz&gt; 元素，見 news.google.com 之實作。')).pass,
+        ]
+        let rr = [true, true]
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('WeChat判識器刻意維持weak, 因無真實頁面之量測值', function() {
+
+        //與Google News那條的差別在證據強弱: 該條有實測數字(真殼頁1822字, 超過閘門),
+        //本條沒有。無量測即標strong, 是拿「談論該主題的長文被誤殺」換一個未經證實的漏判
+        let long = '<html><head><title>談微信驗證</title></head><body><p>' +
+            'secitptpage 出現於 wx.qq.com 之驗證頁，本文說明其運作方式。'.repeat(40) + '</p></body></html>'
+        let short = '<html><head><title>驗證</title></head><body><div id="secitptpage"></div>' +
+            '<script src="https://wx.qq.com/x.js"></script><p>請完成驗證</p></body></html>'
+        let r = [inspectHtml(long).pass, inspectHtml(short).type]
+        let rr = [true, 'verify']
         assert.strict.deepEqual(r, rr)
     })
 

@@ -1,6 +1,6 @@
 import runPlaywright from './runPlaywright.mjs'
 import { METHOD_PW_HEADED as METHOD } from './constants.mjs'
-import { VERIFY_SELECTORS } from './challengeResources.mjs'
+import { VERIFY_SELECTORS, CF_FRAME_HOST, TURNSTILE_CONTAINER_SELECTOR } from './challengeResources.mjs'
 import { getOptBool } from './getOpt.mjs'
 
 
@@ -57,9 +57,9 @@ async function _tryClickVerification(page) {
     }
 
     //模式B, Cloudflare managed challenge整頁(iframe不在DOM, 須透過page.frames)
-    let cfFrame = page.frames().find((f) => f.url().includes('challenges.cloudflare.com'))
+    let cfFrame = page.frames().find((f) => f.url().includes(CF_FRAME_HOST))
     if (cfFrame) {
-        let container = page.locator('#turnstile-container, #turnstileWrapper, .cf-turnstile').first()
+        let container = page.locator(TURNSTILE_CONTAINER_SELECTOR).first()
         let box = await container.boundingBox().catch(() => null)
         if (box) {
             await _humanClick(page, box.x + 30, box.y + box.height / 2)

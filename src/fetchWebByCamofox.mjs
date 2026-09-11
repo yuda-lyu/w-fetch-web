@@ -137,6 +137,9 @@ async function fetchWebByCamofox(url, opt = {}) {
             contentKind: 'synthesized',
             snapshot: r.snapshot,
             snapshotChars: r.snapshotChars,
+
+            //內容實際來源之網址, 由camofox server之snapshot回應帶回
+            finalUrl: r.finalUrl,
             method: METHOD,
             fetchedAt,
             attempts: r.attempts,

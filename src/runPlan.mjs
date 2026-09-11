@@ -5,7 +5,9 @@ import parseArticle from './parseArticle.mjs'
 import { adapt, summarizeFail, finalize } from './finalizeResult.mjs'
 import { runFetchSafely } from './fetchContract.mjs'
 import { wantsInspect, wantsFallback } from './adapterContract.mjs'
-import { getOptBool } from './getOpt.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import { getOptBool, getOptP0Int } from './getOpt.mjs'
+import isInternalHost from './isInternalHost.mjs'
 import { DETECT_EMPTY, DETECT_REDIRECT, PASS_INSPECTION, METHOD_CURL, METHOD_PW_HEADLESS, METHOD_PW_HEADED, METHOD_CAMOFOX } from './constants.mjs'
 import fetchWebByCurl from './fetchWebByCurl.mjs'
 import fetchWebByPlaywrightHeadless from './fetchWebByPlaywrightHeadless.mjs'
@@ -21,6 +23,17 @@ let STEP_ADAPTER = 'adapter'
 let REASON_ADAPTER_FETCH_ERROR = 'adapter-fetch-error'
 let REASON_ADAPTER_FETCH_SKIP = 'adapter-fetch-skip'
 let REASON_FETCHER_ERROR = 'fetcher-error'
+
+
+//自網址取主機名; 解不出者回空字串, 由isInternalHost以「非字串視為內網」之預設處置
+function _hostOf(u) {
+    try {
+        return new URL(u).hostname
+    }
+    catch {
+        return ''
+    }
+}
 
 
 let KNOWN_METHODS = Object.freeze([METHOD_CURL, METHOD_PW_HEADLESS, METHOD_PW_HEADED, METHOD_CAMOFOX])
@@ -118,20 +131,25 @@ function _methodOf(r, step) {
 //僅於抓取成功時呼叫, 故不再重複檢核r.success
 //method由呼叫端傳入已把關之值, 不再自r.method取——後者未經檢核,
 //是同一個決定的第二處實作(_methodOf為其唯一擁有者)
-async function _applyParse(r, url, parse, hit, method) {
+async function _applyParse(r, url, parse, hit, method, meta) {
     if (!parse) {
 
         //不解析時亦須換上把關後之method: finalize由結果物件取該欄位,
         //直接回r會讓抓取器自報之未檢核值繞過_methodOf流到對外結果
         return { ...r, method }
     }
-    let parsed = await parseArticle(r.html, url, hit)
+    let parsed = await parseArticle(r.html, url, hit, meta)
     if (!parsed.success) {
         return parsed
     }
+    //解析成功時重組物件, 抓取層之欄位須逐一帶過來——漏帶即靜默丟失。
+    //snapshot曾是這樣漏過一次, finalUrl是第二個
     let out = { ...parsed, method }
     if (r.snapshot) {
         out.snapshot = r.snapshot
+    }
+    if (r.finalUrl) {
+        out.finalUrl = r.finalUrl
     }
     return out
 }
@@ -155,6 +173,9 @@ async function _applyParse(r, url, parse, hit, method) {
 async function runPlan(url, opt, parse, showLog, hit, plan, redirect) {
 
     let attempts = []
+
+    //本次網址是否為套件自行推導而來(轉址參數提取), 決定抓後要不要複驗內網位址
+    let isDerived = getOptP0Int(opt, '_depth', 0) > 0
 
     for (let step of plan) {
 
@@ -194,13 +215,49 @@ async function runPlan(url, opt, parse, showLog, hit, plan, redirect) {
             continue
         }
 
+        //本次抓取之附帶資訊, 供解析器與adapter判斷
+        //finalUrl取抓取器回報之最終網址, 取不到時退回請求網址(而非留undefined,
+        //使下游不必各自處理缺值)
+        let meta = {
+            requestUrl: url,
+            finalUrl: isestr(r.finalUrl) ? r.finalUrl : url,
+            httpCode: r.httpCode,
+            method,
+            contentKind: r.contentKind,
+        }
+
+        //**套件自行推導之抓取, 抓完須以最終網址複驗內網位址**
+        //
+        //extractRedirectTarget只擋得住「提取出的目標本身是內網位址」。但被擋下的攻擊網址
+        //會改以原網址走一般流程, 而那些網址(linkedin/youtube轉址服務)恰好命中JS_REDIRECT分流,
+        //於是被派到一條**專門跟著轉址走**的路徑上(navigateWithRedirectWait刻意等到host脫離原host);
+        //curl階同理帶-L。亦即第一層擋掉的目標, 可由「讓站方自己轉過去」重新達成。
+        //
+        //只對_depth>0(即本次網址是套件自己推導出來的)複驗: 呼叫端明確給定之網址是他的決定,
+        //擋掉會誤傷正當用途——這條分界與isInternalHost檔頭所述一致
+        if (isDerived && isInternalHost(_hostOf(meta.finalUrl))) {
+            let msg = 'derived fetch resolved to an internal address: ' + meta.finalUrl
+            attempts.push({ method, status: 'blocked', type: DETECT_EMPTY, reason: 'internal-address', message: msg })
+            if (showLog) {
+                console.warn('[fetchWeb] ' + tag + ' blocked: ' + msg)
+            }
+            return finalize(url, { success: false, reason: 'internal-address', message: msg }, attempts)
+        }
+
         //內容判識
         //合成內容(Shadow DOM穿透或accessibility snapshot)之標籤結構已被剝除,
         //故以contentKind告知判識器只比對semantic類判準, 詳見inspectHtml之DETECTORS註解
         //命中之adapter可宣告inspect:false豁免判識, 使「自知如何解析該站台」的呼叫端
-        //不必為此關掉整次呼叫的判識; 只做關不做開, 理由見adapterContract
-        let doStepInspect = step.inspect && wantsInspect(hit?.adapter)
-        let inspection = doStepInspect ? inspectHtml(r.html, { contentKind: r.contentKind, detectors: opt?.detectors, showLog }) : PASS_INSPECTION
+        //不必為此關掉整次呼叫的判識; 只做關不做開, 理由見adapterContract。
+        //
+        //該宣告只關掉**內建**判識器: 它要豁免的是套件對全世界頁面所下的猜測,
+        //而呼叫端自己註冊的detectors是他的判準, 不歸adapter的站台知識管。
+        //此前兩者共用一個布林, adapter一宣告豁免就把呼叫端的判識器一起關掉——
+        //而detectorContract明寫「套件保證註冊的判識器一定會被比對」。
+        //step.inspect(即opt.inspect總開關)則兩邊都關: 那是呼叫端對本次呼叫的明確指示
+        let inspection = step.inspect
+            ? inspectHtml(r.html, { contentKind: r.contentKind, detectors: opt?.detectors, builtin: wantsInspect(hit?.adapter), showLog })
+            : PASS_INSPECTION
         if (!inspection.pass) {
             //reason與type同值並非冗餘: status為'blocked'的紀錄有兩種來源(判識與解析失敗),
             //兩者形狀須一致, 呼叫端才能一律讀reason取得失敗歸因而不必先分辨是哪一種。
@@ -222,7 +279,7 @@ async function runPlan(url, opt, parse, showLog, hit, plan, redirect) {
         }
 
         //解析
-        let parsed = await _applyParse(r, url, parse, hit, method)
+        let parsed = await _applyParse(r, url, parse, hit, method, meta)
         if (parsed.success && isAdapterStep) {
 
             //method只說得出「來自某個adapter」, 說不出是哪一個, 而呼叫端可能同時註冊多個

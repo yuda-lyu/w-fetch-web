@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from 'child_process'
 import { dirname } from 'path'
 import isstr from 'wsemi/src/isstr.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
 import delay from 'wsemi/src/delay.mjs'
 
 
@@ -127,7 +128,9 @@ async function _runSession(base, url, cfg) {
         return { ok: false, reason: 'camofox-empty', message: `camofox snapshot empty (${chars} chars)` }
     }
 
-    return { ok: true, snapshot: snap.snapshot, snapshotChars: chars }
+    //snapshot回應本身即帶tab當前網址(camofox server之page.url()), 此前被丟棄。
+    //四個抓取器皆須回報內容實際來源, 少一個就是又一次「三個做得到、一個沒有」的不對稱
+    return { ok: true, snapshot: snap.snapshot, snapshotChars: chars, finalUrl: isestr(snap.url) ? snap.url : undefined }
 }
 
 

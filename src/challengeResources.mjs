@@ -27,7 +27,7 @@ let CHALLENGE_RESOURCES = [
 
 //有頭模式偵測驗證iframe之選擇器
 //
-//前三項由CHALLENGE_RESOURCES衍生，末項為Turnstile之容器class——它不是資源位址，
+//前面各項由CHALLENGE_RESOURCES衍生，末項為Turnstile之容器class——它不是資源位址，
 //故不列入上表（上表用於比對文件內文，class名放進去會與Turnstile判識器重複）。
 //此陣列之順序有語意：_tryClickVerification取第一個命中且有boundingBox者
 let VERIFY_SELECTORS = [
@@ -36,7 +36,24 @@ let VERIFY_SELECTORS = [
 ]
 
 
+//Cloudflare managed challenge之整頁形態：iframe不在DOM，須經page.frames()比對其來源
+//
+//此值先前在fetchWebByPlaywrightHead內手寫，是同一份知識的**第三份**複本——
+//而本檔第1行自稱「單一擁有者」、檔頭還記著上一次就是從該檔收斂過來的。
+//宣告收斂完成卻留下一份沒收，是同一份知識上的第二次同型錯誤（見CLAUDE_experience.md一）
+let CF_FRAME_HOST = 'challenges.cloudflare.com'
+
+
+//Turnstile容器之選擇器
+//
+//同上，先前在fetchWebByPlaywrightHead內手寫。三個id/class為Cloudflare於不同版型下之容器，
+//與VERIFY_SELECTORS末項的差別是：此處要點的是容器本身，該處要點的是容器內的iframe
+let TURNSTILE_CONTAINER_SELECTOR = '#turnstile-container, #turnstileWrapper, .cf-turnstile'
+
+
 export {
     CHALLENGE_RESOURCES,
-    VERIFY_SELECTORS
+    VERIFY_SELECTORS,
+    CF_FRAME_HOST,
+    TURNSTILE_CONTAINER_SELECTOR
 }
