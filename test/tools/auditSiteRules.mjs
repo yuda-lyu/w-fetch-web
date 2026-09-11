@@ -66,6 +66,14 @@ let SOURCES = [
     },
     {
 
+        //內建msn adapter之網址比對規則與內容API端點。站台知識寫在此檔而非defaultAdapters.mjs,
+        //不登記即成為自檢所防的那種漏掃(本檔含msn.com, 自檢會以非零離開碼擋下)
+        file: 'src/fetchMsn.mjs',
+        label: 'fetchMsn',
+        pick: (t) => (/msn\\\.com\\\//.test(t) ? ['msn.com'] : []),
+    },
+    {
+
         //反爬蟲廠商之特徵位址。與inspectHtml內聯的captcha-delivery.com、edgesuite.net同類,
         //只是被抽成獨立模組; 漏掉此檔會使同一類知識掃一個漏一個——正是本腳本要防的那種漏
         file: 'src/challengeResources.mjs',

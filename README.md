@@ -88,7 +88,8 @@ await test()
 | `parse` | Boolean | `true` | 以Readability解析出`title`與`content`，`false`則回傳原始`html` |
 | `showLog` | Boolean | `true` | 是否顯示階梯升級過程訊息 |
 | `inspect` | Boolean | `true` | 是否以`inspectHtml`對抓取結果做原始內容判識，關閉後不因判定為挑戰頁或空內容而升級。此為**整次呼叫**之總開關，只想豁免特定站台請改用adapter之`inspect` |
-| `adapters` | Array | `[]` | 站台adapter陣列，用於覆寫特定站台之取得、判識與解析方式，形狀為`{id,match,fetch,parse,inspect,fallback}`，使用端註冊者優先於內建（gelonghui、bloomberg） |
+| `adapters` | Array | `[]` | 站台adapter陣列，用於覆寫特定站台之取得、判識與解析方式，形狀為`{id,match,fetch,parse,inspect,fallback}`，使用端註冊者排於內建（gelonghui、bloomberg、msn）之前，同網域以先命中者勝 |
+| `useDefaultAdapters` | Boolean | `true` | 是否附加內建adapter清單。`false`時只用`adapters`所給者，可配合對外匯出之`defaultAdapters`陣列自行剔除或重排 |
 | `detectors` | Array | `[]` | 判識器陣列，用於補充內建判識器所不涵蓋之攔阻頁形態，形狀為`{type,message,test}`，使用端註冊者優先於內建 |
 | `maxRetries` | Integer | `5` | 各抓取方法失敗時之最大重試次數，含初始共執行`maxRetries+1`次 |
 
@@ -133,6 +134,7 @@ await test()
 | `adapter-parse-miss` | adapter命中網域但頁面缺少其預期之結構 | 否 |
 | `adapter-fetch-error` | adapter之`fetch`拋錯或回傳形狀不合契約（不落回階梯） | 否，須修adapter |
 | `adapter-fetch-skip` | adapter之`fetch`表明此網址不適用，改由階梯抓取 | — |
+| `adapter-fetch-miss` | adapter之`fetch`取得回應但形狀不合預期（非JSON、非文章型或無正文），與`adapter-parse-miss`對稱 | 否 |
 | `fetcher-error` | 抓取器拋錯或回傳形狀不合契約 | 否 |
 | `internal-address` | 套件自行推導之網址（轉址參數提取）於抓取後解析至內網或保留位址 | 否 |
 | `captcha` | 判識為CAPTCHA或反爬蟲攔阻頁 | 否，該站需更高階抓取方法 |
@@ -147,6 +149,31 @@ await test()
 
 #### Adapters:
 adapter用於覆寫特定站台之取得、判識與解析方式，形狀為`{id, match, fetch, parse, inspect, fallback}`。
+
+##### 內建adapter與其組合方式
+
+內建清單為`gelonghui`、`bloomberg`、`msn`三個，以`defaultAdapters`對外匯出（凍結陣列）：
+
+| id | 掛點 | 說明 |
+| --- | --- | --- |
+| `gelonghui` | `parse` | 由頁面內嵌之SSR state取正文 |
+| `bloomberg` | `parse` | 由`__NEXT_DATA__`取正文 |
+| `msn` | `fetch` | 文章頁（`/ar-`）為純前端渲染，四階抓取皆取不到正文，改經其內容API取得；`fallback:false`（落回階梯實測成功率為0） |
+
+`opt.adapters`排在內建清單**之前**，同網域以先命中者勝出。三種常見組合：
+
+```js
+import fetchWeb, { defaultAdapters } from 'w-fetch-web/src/fetchWeb.mjs'
+
+//逐站覆寫: 自己的msn adapter排前面, 內建的msn就不會被用到
+await fetchWeb(url, { adapters: [myMsn] })
+
+//整份停用內建清單
+await fetchWeb(url, { useDefaultAdapters: false })
+
+//只剔除其中一個
+await fetchWeb(url, { useDefaultAdapters: false, adapters: defaultAdapters.filter((a) => a.id !== 'msn') })
+```
 
 三個掛點分屬管線的三個階段，**各自獨立，可只註冊其中之一**：
 

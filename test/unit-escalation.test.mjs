@@ -293,8 +293,12 @@ describe('階梯升級', function() {
         })
 
         it('msn.com跳過curl直接headless, 且不帶waitForRedirect', async function() {
+
+            //本條驗的是**路由規則**, 故以useDefaultAdapters:false隔離adapter層:
+            //msn文章頁現有內建fetch adapter, 不隔離時計畫最前會多一個adapter階而先被它處理
+            //(該adapter之行為另見unit-builtinAdapterMsn)。不改期望值去遷就, 是因為路由規則本身沒變
             let fs = mkAll({ playwrightHeadless: [ok(HTML_OK)] })
-            let t = await run('https://www.msn.com/en-us/money/x/ar-AA1', fs)
+            let t = await run('https://www.msn.com/en-us/money/x/ar-AA1', fs, { useDefaultAdapters: false })
             let r = [t.status, fs.counts(), fs.playwrightHeadless.calls[0].waitForRedirect]
             let rr = ['success', [0, 1, 0, 0], false]
             assert.strict.deepEqual(r, rr)

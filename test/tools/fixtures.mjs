@@ -50,11 +50,33 @@ let storyOk = {
 }
 
 
+//--- MSN ---
+//內容API之回應形狀取自2026-09-11實抓assets.msn.com/content/view/v2/Detail/{locale}/{id}之真實回應:
+//頂層欄位含title、body(HTML字串)、type('article')、provider{name}、sourceHref、abstract等(另有多欄與解析無關者略去)。
+//文字為自擬, 只保留真實回應之**形狀**, 不複製新聞內文
+
+let URL_MSN = 'https://www.msn.com/zh-tw/news/other/%E6%B8%AC%E8%A9%A6/ar-AA2bZm9d'
+
+let msnApiOk = {
+    abstract: '本週市場焦點在於私募信貸的流動性折價。',
+    title: '私募信貸流動性折價擴大',
+    sourceHref: 'https://example.com/source-article',
+    type: 'article',
+    provider: { name: '測試來源媒體' },
+    //正文長度對齊真實量測(12篇之純文字為505~963字): 過短的fixture會讓Readability走不同分支,
+    //測試綠了卻不代表真實長度下也成立
+    body: ('<p>本週市場焦點在於私募信貸的流動性折價，多家機構重新評估其估值模型。</p>' +
+        '<p>分析師指出，流動性溢價只有在不需要流動性時才成立，這是一個結構性的矛盾。</p>').repeat(8),
+}
+
+
 export {
     gelonghuiBody,
     gelonghuiEscaped,
     htmlGelonghui,
     bloombergBlocks,
     htmlBloomberg,
-    storyOk
+    storyOk,
+    URL_MSN,
+    msnApiOk
 }

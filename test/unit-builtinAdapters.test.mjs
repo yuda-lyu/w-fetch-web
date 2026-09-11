@@ -329,7 +329,8 @@ describe('內建站台adapter', function() {
 
         it('內建adapter亦可用inspect:false豁免, 與使用端adapter一視同仁', async function() {
 
-            //P2之機制對內建與使用端無差別待遇。內建之gelonghui與bloomberg目前**未**宣告豁免:
+            //P2之機制對內建與使用端無差別待遇。內建之gelonghui、bloomberg與msn目前皆**未**宣告豁免
+            //(msn另見unit-builtinAdapterMsn: 實測12篇重組HTML經判識全數通過, 無豁免之證據):
             //gelonghui之真實頁面實測可見文字7281而通過判識, 無此需要;
             //bloomberg之真實頁面未取得(curl回403), 未經量測即宣告豁免屬臆測, 故不加
             let { default: fetchWeb } = await import('../src/fetchWeb.mjs')

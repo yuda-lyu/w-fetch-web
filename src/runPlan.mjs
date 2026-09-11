@@ -1,5 +1,4 @@
-import isobj from 'wsemi/src/isobj.mjs'
-import isfun from 'wsemi/src/isfun.mjs'
+import fetcherOf from './fetcherSeam.mjs'
 import inspectHtml from './inspectHtml.mjs'
 import parseArticle from './parseArticle.mjs'
 import { adapt, summarizeFail, finalize } from './finalizeResult.mjs'
@@ -54,17 +53,9 @@ let FETCHER_BY_KEY = Object.freeze({
 })
 
 
-//測試接縫: 允許以opt._fetchers置換個別抓取函數
-//階梯升級須走完四階才能驗證, 真跑等於每條測試啟動Chrome兩次加camofox一次, 且有頭模式會彈實體視窗,
-//無法作為常規測試; 故開此接縫供測試以假抓取函數精確驅動各升級情境。
-//底線前綴表示內部用途, 未傳時一律使用真實抓取函數, 生產環境不應傳入
-function _fetcherOf(opt, fetcherKey, real) {
-    let fs = opt?._fetchers
-    if (isobj(fs) && isfun(fs[fetcherKey])) {
-        return fs[fetcherKey]
-    }
-    return real
-}
+//測試接縫(opt._fetchers)之取用規則由fetcherSeam單一擁有:
+//內建msn adapter之fetch掛點亦經同一接縫呼叫curl, 規則若在兩處各寫一份日後會分歧
+let _fetcherOf = fetcherOf
 
 
 //執行單一階之抓取, 含結構適配
