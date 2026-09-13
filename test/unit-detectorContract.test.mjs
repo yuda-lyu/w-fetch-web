@@ -176,7 +176,7 @@ describe('使用端判識器之契約', function() {
                     throw new Error('boom')
                 },
             }
-            let t = inspectHtml(htmlCnChallenge, { detectors: [bad, mk()], showLog: false })
+            let t = inspectHtml(htmlCnChallenge, { detectors: [bad, mk()], useShowLog: false })
             let r = [t.pass, t.message]
             let rr = [false, '中文攔阻頁']
             assert.strict.deepEqual(r, rr)
@@ -194,7 +194,7 @@ describe('使用端判識器之契約', function() {
             let r = 'no-throw'
             let t = null
             try {
-                t = inspectHtml('<html><head><title>t</title></head><body><p>' + 'x'.repeat(300) + '</p></body></html>', { detectors: [bad], showLog: false })
+                t = inspectHtml('<html><head><title>t</title></head><body><p>' + 'x'.repeat(300) + '</p></body></html>', { detectors: [bad], useShowLog: false })
             }
             catch (err) {
                 r = err.message

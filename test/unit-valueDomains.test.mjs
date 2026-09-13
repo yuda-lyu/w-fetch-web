@@ -55,7 +55,7 @@ describe('method與type之值域守門', function() {
 
             //'auto'不在METHOD_OPTIONS內(它不對應單一階而是整條階梯), 此前訊息取自該物件之鍵,
             //於是把預設值本身漏掉——呼叫端打錯大小寫時, 收到的合法清單裡沒有他想用的那個值
-            let t = await fetchWeb('https://example.com/', { method: 'Auto', showLog: false, maxRetries: 0 })
+            let t = await fetchWeb('https://example.com/', { method: 'Auto', useShowLog: false, maxRetries: 0 })
             let r = [t.status, t.reason, t.message]
             let rr = ['error', 'invalid-method', 'unknown method "Auto" (valid: auto, curl, playwright, playwright-headed, camofox)']
             assert.strict.deepEqual(r, rr)
@@ -224,7 +224,7 @@ describe('method與type之值域守門', function() {
         it('抓取器自報之非法method不流出, 退回計畫所宣告者', async function() {
             let r = []
             for (let v of ['MY-OWN-METHOD', '', 123, null, undefined, 'CURL', 'auto']) {
-                let t = await fetchWeb('https://example.com/a', { method: 'curl', showLog: false, _fetchers: { curl: mkFetcher(v) } })
+                let t = await fetchWeb('https://example.com/a', { method: 'curl', useShowLog: false, _fetchers: { curl: mkFetcher(v) } })
                 r.push([t.method, t.attempts[0].method])
             }
             let rr = map([1, 2, 3, 4, 5, 6, 7], () => ['curl', 'curl'])
@@ -234,7 +234,7 @@ describe('method與type之值域守門', function() {
         it('抓取器自報之合法method予以採信', async function() {
 
             //抓取器才知道自己實際做了什麼(如轉址後改由他階完成), 故合法值優先於計畫宣告值
-            let t = await fetchWeb('https://example.com/a', { method: 'curl', showLog: false, _fetchers: { curl: mkFetcher(METHOD_CAMOFOX) } })
+            let t = await fetchWeb('https://example.com/a', { method: 'curl', useShowLog: false, _fetchers: { curl: mkFetcher(METHOD_CAMOFOX) } })
             let r = [t.method, t.attempts[0].method]
             let rr = ['camofox', 'camofox']
             assert.strict.deepEqual(r, rr)
@@ -243,7 +243,7 @@ describe('method與type之值域守門', function() {
         it('parse=false之結果其method同受約束', async function() {
 
             //解析與不解析是兩條輸出路徑, 此前各自取method而其中一條未把關
-            let t = await fetchWeb('https://example.com/a', { method: 'curl', parse: false, showLog: false, _fetchers: { curl: mkFetcher('BOGUS') } })
+            let t = await fetchWeb('https://example.com/a', { method: 'curl', parse: false, useShowLog: false, _fetchers: { curl: mkFetcher('BOGUS') } })
             let r = [t.method, t.attempts[0].method]
             let rr = ['curl', 'curl']
             assert.strict.deepEqual(r, rr)

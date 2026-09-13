@@ -15,7 +15,7 @@ import getRetryWaitMs from './getRetryWaitMs.mjs'
  * @param {Object} cfg 輸入設定物件
  * @param {Integer} cfg.maxRetries 輸入最大重試次數整數，含初始共執行maxRetries+1次
  * @param {String} cfg.tag 輸入退避訊息之來源標籤字串
- * @param {Boolean} [cfg.showLog=true] 輸入是否輸出退避訊息布林值，預設true
+ * @param {Boolean} [cfg.useShowLog=true] 輸入是否輸出退避訊息布林值，預設true
  * @returns {Promise} 回傳Promise，resolve回傳單次嘗試函數之最後結果並附加attempts實際執行次數
  * @example
  *
@@ -42,7 +42,7 @@ async function withRetry(attemptFn, cfg) {
 
     let maxRetries = cfg.maxRetries
     let tag = cfg.tag
-    let showLog = cfg.showLog !== false
+    let useShowLog = cfg.useShowLog !== false
 
     let r = null
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
@@ -60,7 +60,7 @@ async function withRetry(attemptFn, cfg) {
 
         //退避訊息之唯一實作處; detail由抓取器提供, 未給時取其錯誤訊息
         let ms = getRetryWaitMs(attempt)
-        if (showLog) {
+        if (useShowLog) {
             let detail = r.logDetail || ('error: ' + (r.message || 'unknown'))
             process.stderr.write(`[${tag}] ${detail}，等 ${ms}ms 後重試 (${attempt}/${maxRetries})\n`)
         }

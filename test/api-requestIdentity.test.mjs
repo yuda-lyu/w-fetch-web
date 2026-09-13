@@ -27,7 +27,7 @@ describe('HTTP請求身分之端對端驗證', function() {
             await fetchWeb(svr.url('/article'), {
                 method: 'curl',
                 maxRetries: 0,
-                showLog: false,
+                useShowLog: false,
                 userAgent: UA,
                 referer: REF,
                 acceptLanguage: LANG,
@@ -39,7 +39,7 @@ describe('HTTP請求身分之端對端驗證', function() {
         })
 
         it('未指定時採預設身分, 不送出curl自己的UA', async function() {
-            await fetchWeb(svr.url('/article'), { method: 'curl', maxRetries: 0, showLog: false })
+            await fetchWeb(svr.url('/article'), { method: 'curl', maxRetries: 0, useShowLog: false })
             let h = svr.lastHeaders()
             let r = [h.userAgent, h.referer, h.userAgent.startsWith('curl/')]
             let rr = [DEFAULT_UA, DEFAULT_REFERER, false]
@@ -65,7 +65,7 @@ describe('HTTP請求身分之端對端驗證', function() {
             await fetchWeb(svr.url('/article'), {
                 method: 'playwright',
                 maxRetries: 0,
-                showLog: false,
+                useShowLog: false,
                 userAgent: UA,
                 referer: REF,
                 acceptLanguage: LANG,
@@ -84,7 +84,7 @@ describe('HTTP請求身分之端對端驗證', function() {
 
             //刻意之不對稱: 硬套寫死版本號的UA會與navigator.*、TLS等其餘指紋不一致,
             //對反偵測是負面的。故此階未指定時交由瀏覽器用自己的真實身分
-            await fetchWeb(svr.url('/article'), { method: 'playwright', maxRetries: 0, showLog: false })
+            await fetchWeb(svr.url('/article'), { method: 'playwright', maxRetries: 0, useShowLog: false })
             let h = svr.lastHeaders()
             let r = [h.userAgent === DEFAULT_UA, h.userAgent.includes('Chrome'), h.referer]
             let rr = [false, true, '']

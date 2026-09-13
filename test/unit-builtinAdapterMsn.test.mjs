@@ -262,7 +262,7 @@ describe('內建msn adapter', function() {
             //動機情境本身: 此前預設階梯三層全滅(實測43秒、成功率0)
             let ladder = mkLadder()
             let curl = mkCurl(okResp(msnApiOk))
-            let t = await fetchWeb(URL_MSN, { showLog: false, _fetchers: { curl, ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN, { useShowLog: false, _fetchers: { curl, ...ladder.fs } })
             let r = [t.status, t.method, t.adapterId, t.title, includes(t.content, '本週市場焦點'), t.attempts.length, ladder.total()]
             let rr = ['success', 'adapter', 'msn', '私募信貸流動性折價擴大', true, 1, 0]
             assert.strict.deepEqual(r, rr)
@@ -271,7 +271,7 @@ describe('內建msn adapter', function() {
         it('msn影片頁經內容API取得逐字稿並解析', async function() {
             let ladder = mkLadder()
             let curl = mkCurl(okResp(msnApiVideo))
-            let t = await fetchWeb(URL_MSN_VIDEO, { showLog: false, _fetchers: { curl, ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN_VIDEO, { useShowLog: false, _fetchers: { curl, ...ladder.fs } })
             let r = [t.status, t.method, t.adapterId, t.title, includes(t.content, '本週市場焦點'), t.attempts.length, ladder.total()]
             let rr = ['success', 'adapter', 'msn', '市場週報：本週三大焦點', true, 1, 0]
             assert.strict.deepEqual(r, rr)
@@ -282,7 +282,7 @@ describe('內建msn adapter', function() {
             //落回的存在理由是「還抓得到內容」, 對msn不成立——落回只會白耗兩次Chrome啟動加一次camofox
             let ladder = mkLadder()
             let curl = mkCurl({ status: 'error', reason: 'http-error', message: 'HTTP 410', httpCode: 410, method: 'curl' })
-            let t = await fetchWeb(URL_MSN, { showLog: false, _fetchers: { curl, ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN, { useShowLog: false, _fetchers: { curl, ...ladder.fs } })
             let r = [t.status, t.reason, t.adapterId, map(t.attempts, (a) => [a.method, a.status, a.reason, a.adapterId]), ladder.total()]
             let rr = ['error', 'http-error', 'msn', [['adapter', 'failed', 'http-error', 'msn']], 0]
             assert.strict.deepEqual(r, rr)
@@ -293,7 +293,7 @@ describe('內建msn adapter', function() {
             for (let m of ['curl', 'playwright', 'playwright-headed', 'camofox']) {
                 let ladder = mkLadder()
                 let curl = mkCurl(okResp(msnApiOk))
-                let t = await fetchWeb(URL_MSN, { showLog: false, method: m, _fetchers: { curl, ...ladder.fs } })
+                let t = await fetchWeb(URL_MSN, { useShowLog: false, method: m, _fetchers: { curl, ...ladder.fs } })
                 r.push([t.status, t.method, t.attempts.length, curl.calls.length, ladder.total()])
             }
             let rr = map([1, 2, 3, 4], () => ['success', 'adapter', 1, 1, 0])
@@ -303,7 +303,7 @@ describe('內建msn adapter', function() {
         it('API回應無body時亦不落回', async function() {
             let ladder = mkLadder()
             let curl = mkCurl(okResp({ ...msnApiOk, body: undefined }))
-            let t = await fetchWeb(URL_MSN, { showLog: false, _fetchers: { curl, ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN, { useShowLog: false, _fetchers: { curl, ...ladder.fs } })
             let r = [t.status, t.reason, ladder.total()]
             let rr = ['error', 'adapter-fetch-miss', 0]
             assert.strict.deepEqual(r, rr)
@@ -316,7 +316,7 @@ describe('內建msn adapter', function() {
             //呼叫端看不出真正原因是「這篇本來就沒有正文」。fallback 現涵蓋整個 adapter 階(runPlan 之 _mayEscalate)
             let ladder = mkLadder()
             let curl = mkCurl(okResp(msnApiVideoShort))
-            let t = await fetchWeb(URL_MSN_VIDEO_SHORT, { showLog: false, _fetchers: { curl, ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN_VIDEO_SHORT, { useShowLog: false, _fetchers: { curl, ...ladder.fs } })
             let r = [t.status, t.reason, t.adapterId, map(t.attempts, (a) => [a.method, a.adapterId, a.status, a.reason]), ladder.total()]
             let rr = ['error', 'empty-content', 'msn', [['adapter', 'msn', 'blocked', 'empty-content']], 0]
             assert.strict.deepEqual(r, rr)
@@ -329,7 +329,7 @@ describe('內建msn adapter', function() {
             let data = { ...msnApiOk, body: heavyBody }
             let html = (await fetchMsn(URL_MSN, { _fetchers: { curl: mkCurl(okResp(data)) } }, ctx)).html
             let ladder = mkLadder()
-            let t = await fetchWeb(URL_MSN, { showLog: false, _fetchers: { curl: mkCurl(okResp(data)), ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN, { useShowLog: false, _fetchers: { curl: mkCurl(okResp(data)), ...ladder.fs } })
             let r = [html.length > 5000, inspectHtml(html, { contentKind: 'synthesized' }).type, t.status, t.method, t.contentLength >= 50, ladder.total()]
             let rr = [true, 'empty', 'success', 'adapter', true, 0]
             assert.strict.deepEqual(r, rr)
@@ -341,7 +341,7 @@ describe('內建msn adapter', function() {
             //擋下後因 fallback:false 不續走, 歸因為呼叫端判識器之 type
             let ladder = mkLadder()
             let detectors = [{ id: 'mine', type: 'verify', message: '呼叫端判識', test: (c) => c.lower.includes('本週市場焦點') }]
-            let t = await fetchWeb(URL_MSN, { showLog: false, detectors, _fetchers: { curl: mkCurl(okResp(msnApiOk)), ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN, { useShowLog: false, detectors, _fetchers: { curl: mkCurl(okResp(msnApiOk)), ...ladder.fs } })
             let r = [t.status, t.reason, map(t.attempts, (a) => [a.method, a.adapterId, a.status, a.type, a.message]), ladder.total()]
             let rr = ['error', 'verify', [['adapter', 'msn', 'blocked', 'verify', '呼叫端判識']], 0]
             assert.strict.deepEqual(r, rr)
@@ -349,7 +349,7 @@ describe('內建msn adapter', function() {
 
         it('parse=false時回傳重組之HTML', async function() {
             let ladder = mkLadder()
-            let t = await fetchWeb(URL_MSN, { showLog: false, parse: false, _fetchers: { curl: mkCurl(okResp(msnApiOk)), ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN, { useShowLog: false, parse: false, _fetchers: { curl: mkCurl(okResp(msnApiOk)), ...ladder.fs } })
             let r = [t.status, t.method, t.adapterId, includes(t.html, '<article><h1>私募信貸流動性折價擴大</h1>')]
             let rr = ['success', 'adapter', 'msn', true]
             assert.strict.deepEqual(r, rr)
@@ -365,7 +365,7 @@ describe('內建msn adapter', function() {
                 match: /msn\.com/,
                 fetch: async () => ({ status: 'success', html: '<html><head><title>MINE</title></head><body><article><p>' + '自有來源之正文內容。'.repeat(20) + '</p></article></body></html>' }),
             }
-            let t = await fetchWeb(URL_MSN, { showLog: false, adapters: [mine], _fetchers: { curl, ...ladder.fs } })
+            let t = await fetchWeb(URL_MSN, { useShowLog: false, adapters: [mine], _fetchers: { curl, ...ladder.fs } })
             let r = [t.status, t.adapterId, t.title, curl.calls.length]
             let rr = ['success', 'mine-msn', 'MINE', 0]
             assert.strict.deepEqual(r, rr)

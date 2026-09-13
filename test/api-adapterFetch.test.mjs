@@ -47,7 +47,7 @@ describe('adapter之fetch掛點', function() {
             parse: (html) => ({ success: true, title: html === htmlFromApi ? 'BY-ADAPTER' : 'BY-SCRAPE', content }),
             ...over,
         }]
-        return fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters, ...optExtra }).then((t) => ({ t, n }))
+        return fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters, ...optExtra }).then((t) => ({ t, n }))
     }
 
     let okFetch = async () => ({ status: 'success', html: htmlFromApi })
@@ -97,7 +97,7 @@ describe('adapter之fetch掛點', function() {
 
         it('未經fetch掛點之結果不帶adapterId, 維持既有形狀', async function() {
             let t = await fetchWeb('https://example.com/a', {
-                showLog: false,
+                useShowLog: false,
                 method: 'curl',
                 _fetchers: { curl: async () => ({ method: 'curl', status: 'success', html: htmlScraped }) },
             })
@@ -120,7 +120,7 @@ describe('adapter之fetch掛點', function() {
                     return { success: true, title: 't', content }
                 },
             }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, adapters, _fetchers: mkFetchers().fs })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, adapters, _fetchers: mkFetchers().fs })
             let r = [t.status, got]
             let rr = ['success', [
                 ['fetch', { tag: 'from-match', u: 'https://example.com/a' }],
@@ -133,7 +133,7 @@ describe('adapter之fetch掛點', function() {
 
             //三個掛點各自獨立, 可只註冊其中之一
             let adapters = [{ id: 'fetchonly', match: /example\.com/, fetch: okFetch }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, adapters, _fetchers: mkFetchers().fs })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, adapters, _fetchers: mkFetchers().fs })
             let r = [t.status, t.method, t.adapterId, t.title]
             let rr = ['success', 'adapter', 'fetchonly', '由adapter取得']
             assert.strict.deepEqual(r, rr)
@@ -253,7 +253,7 @@ describe('adapter之fetch掛點', function() {
             }
             let fs = { curl: mkFail('curl', 'curl'), playwrightHeadless: mkFail('headless', 'playwright-headless'), playwrightHead: mkFail('headed', 'playwright-headed'), camofox: mkFail('camofox', 'camofox') }
             let adapters = [{ id: 'api', match: /example\.com/, fetch: async () => ({ status: 'error', reason: 'my-api-down', message: 'x' }) }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters })
             let r = [t.status, t.reason, Object.prototype.hasOwnProperty.call(t, 'adapterId'), t.attempts.length, t.attempts[0].adapterId]
             let rr = ['error', 'http-error', false, 5, 'api']
             assert.strict.deepEqual(r, rr)
@@ -292,7 +292,7 @@ describe('adapter之fetch掛點', function() {
                 return { method: 'curl', status: 'error', reason: 'http-error', message: 'HTTP 500' }
             }
             let adapters = [{ id: 'api', match: /example\.com/, fetch: async () => ({ status: 'skip' }), fallback: false }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters })
             let r = [t.status, t.method, n.curl, n.headless]
             let rr = ['success', 'playwright-headless', 1, 1]
             assert.strict.deepEqual(r, rr)
@@ -301,7 +301,7 @@ describe('adapter之fetch掛點', function() {
         it('只有parse掛點之adapter沒有adapter階, fallback對它無作用(文件化之限制)', async function() {
             let { fs, n } = mkFetchers()
             let adapters = [{ id: 'p', match: /example\.com/, parse: () => ({ success: false, reason: 'my-miss', message: 'x' }), fallback: false }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters })
             let r = [t.status, t.reason, n]
             let rr = ['error', 'my-miss', { curl: 1, headless: 1, headed: 1, camofox: 1 }]
             assert.strict.deepEqual(r, rr)
@@ -371,7 +371,7 @@ describe('adapter之fetch掛點', function() {
             //內網複驗不分階一律收攤, 不受fallback拘束: 換抓取器不會讓內網位址變成外網
             let { fs, n } = mkFetchers()
             let adapters = [{ id: 'api', match: /example\.com/, fetch: async () => ({ status: 'success', html: htmlFromApi, finalUrl: 'http://127.0.0.1/secret' }) }]
-            let t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=https%3A%2F%2Fexample.com%2Fa', { showLog: false, _fetchers: fs, adapters })
+            let t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=https%3A%2F%2Fexample.com%2Fa', { useShowLog: false, _fetchers: fs, adapters })
             let r = [t.status, t.reason, t.url, map(t.attempts, (a) => [a.method, a.adapterId, a.status, a.type, a.reason]), n]
             let rr = ['error', 'internal-address', 'https://example.com/a', [['adapter', 'api', 'blocked', 'empty', 'internal-address']], zero]
             assert.strict.deepEqual(r, rr)
@@ -447,7 +447,7 @@ describe('adapter之fetch掛點', function() {
 
         it('既無parse亦無fetch之adapter不合契約, 予以略過', async function() {
             let adapters = [{ id: 'empty', match: /example\.com/ }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, adapters, _fetchers: mkFetchers().fs })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, adapters, _fetchers: mkFetchers().fs })
             let r = [t.status, t.method, t.title]
             let rr = ['success', 'curl', '爬來的']
             assert.strict.deepEqual(r, rr)

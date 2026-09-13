@@ -29,7 +29,7 @@ describe('內建adapter清單與useDefaultAdapters', function() {
     })
 
     it('預設附加內建清單', async function() {
-        let t = await fetchWeb(URL_G, { showLog: false, method: 'curl', _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
+        let t = await fetchWeb(URL_G, { useShowLog: false, method: 'curl', _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
         let r = [t.status, t.title]
         let rr = ['success', '流動性溢價的真相']
         assert.strict.deepEqual(r, rr)
@@ -38,7 +38,7 @@ describe('內建adapter清單與useDefaultAdapters', function() {
     it('useDefaultAdapters:false時不附加內建清單', async function() {
 
         //內建gelonghui不被諮詢, 改走Readability; 該fixture之正文只在script內, Readability取不到
-        let t = await fetchWeb(URL_G, { showLog: false, method: 'curl', useDefaultAdapters: false, _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
+        let t = await fetchWeb(URL_G, { useShowLog: false, method: 'curl', useDefaultAdapters: false, _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
         let r = [t.status, t.reason]
         let rr = ['error', 'empty-content']
         assert.strict.deepEqual(r, rr)
@@ -58,7 +58,7 @@ describe('內建adapter清單與useDefaultAdapters', function() {
             playwrightHead: async () => ({ status: 'success', html: SHELL, method: 'playwright-headed' }),
             camofox: async () => ({ status: 'error', reason: 'camofox-empty', message: 'x', method: 'camofox' }),
         }
-        let t = await fetchWeb(URL_MSN, { showLog: false, useDefaultAdapters: false, _fetchers: fs })
+        let t = await fetchWeb(URL_MSN, { useShowLog: false, useDefaultAdapters: false, _fetchers: fs })
         let r = [t.attempts[0].method, n.curl, n.headless]
         let rr = ['playwright-headless', 0, 1]
         assert.strict.deepEqual(r, rr)
@@ -66,7 +66,7 @@ describe('內建adapter清單與useDefaultAdapters', function() {
 
     it('配合匯出之defaultAdapters可剔除其中一個而保留其餘', async function() {
         let adapters = defaultAdapters.filter((a) => a.id !== 'msn')
-        let tG = await fetchWeb(URL_G, { showLog: false, method: 'curl', useDefaultAdapters: false, adapters, _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
+        let tG = await fetchWeb(URL_G, { useShowLog: false, method: 'curl', useDefaultAdapters: false, adapters, _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
         let n = 0
         let fs = {
             curl: async () => {
@@ -77,7 +77,7 @@ describe('內建adapter清單與useDefaultAdapters', function() {
             playwrightHead: async () => ({ status: 'success', html: SHELL, method: 'playwright-headed' }),
             camofox: async () => ({ status: 'error', reason: 'camofox-empty', message: 'x', method: 'camofox' }),
         }
-        let tM = await fetchWeb(URL_MSN, { showLog: false, useDefaultAdapters: false, adapters, _fetchers: fs })
+        let tM = await fetchWeb(URL_MSN, { useShowLog: false, useDefaultAdapters: false, adapters, _fetchers: fs })
         let r = [tG.title, tM.attempts[0].method, n]
         let rr = ['流動性溢價的真相', 'playwright-headless', 0]
         assert.strict.deepEqual(r, rr)
@@ -86,7 +86,7 @@ describe('內建adapter清單與useDefaultAdapters', function() {
     it('useDefaultAdapters為非布林時採預設true', async function() {
         let r = []
         for (let v of ['false', 0, null, undefined, {}]) {
-            let t = await fetchWeb(URL_G, { showLog: false, method: 'curl', useDefaultAdapters: v, _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
+            let t = await fetchWeb(URL_G, { useShowLog: false, method: 'curl', useDefaultAdapters: v, _fetchers: { curl: mkCurlHtml(htmlGelonghui('articleDetail')) } })
             r.push(t.title)
         }
         let rr = map([1, 2, 3, 4, 5], () => '流動性溢價的真相')

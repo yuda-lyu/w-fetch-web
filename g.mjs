@@ -18,7 +18,7 @@ let test = async () => {
 
     //指定抓取方法, 並關閉階梯升級過程訊息
     await w.pmSeries(['curl', 'playwright'], async (method) => {
-        let r = await wi.fetchWeb(url, { method, showLog: false })
+        let r = await wi.fetchWeb(url, { method, useShowLog: false })
         console.log('method=' + method + ':', r.status, r.method, r.contentLength)
         // => method=curl: success curl 111
         // => method=playwright: success playwright-headless 125

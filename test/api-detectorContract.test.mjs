@@ -13,7 +13,7 @@ import useServer from './tools/useServer.mjs'
 describe('使用端判識器之接線', function() {
 
     let svr = useServer()
-    let optBase = { method: 'curl', maxRetries: 0, showLog: false }
+    let optBase = { method: 'curl', maxRetries: 0, useShowLog: false }
     let mkDet = (over) => [{ id: 'cn', type: 'captcha', message: '中文攔阻頁', test: (c) => c.lower.includes('正在进行安全检测'), ...over }]
 
     describe('經fetchWeb之完整路徑', function() {
@@ -96,7 +96,7 @@ describe('使用端判識器之接線', function() {
                 parse: () => ({ success: true, title: 'BY-ADAPTER', content: 'C'.repeat(60) }),
                 inspect: false,
             }]
-            let t = await fetchWeb('https://example.com/a', { method: 'curl', maxRetries: 0, showLog: false, _fetchers: fs, detectors: mkDet(), adapters })
+            let t = await fetchWeb('https://example.com/a', { method: 'curl', maxRetries: 0, useShowLog: false, _fetchers: fs, detectors: mkDet(), adapters })
             let r = [t.status, t.title]
             let rr = ['success', 'BY-ADAPTER']
             assert.strict.deepEqual(r, rr)
@@ -157,7 +157,7 @@ describe('使用端判識器之接線', function() {
                 curl: mk('curl', htmlCnChallenge),
                 playwrightHeadless: mk('playwright-headless', htmlArticle),
             }
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, detectors: mkDet() })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, detectors: mkDet() })
             let r = [
                 t.status,
                 t.method,
@@ -180,7 +180,7 @@ describe('使用端判識器之接線', function() {
                 curl: mk('curl', htmlCnChallenge),
                 playwrightHeadless: mk('playwright-headless', htmlArticle),
             }
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs })
             let r = [t.status, t.method, t.title, [fs.curl.calls.length, fs.playwrightHeadless.calls.length]]
             let rr = ['success', 'curl', '安全验证', [1, 0]]
             assert.strict.deepEqual(r, rr)

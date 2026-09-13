@@ -51,7 +51,7 @@ describe('內容之最終網址', function() {
                 s.end()
             })
             let A = urlOf(sa, '/wrap')
-            let t = await fetchWeb(A, { method: 'curl', showLog: false, maxRetries: 0 })
+            let t = await fetchWeb(A, { method: 'curl', useShowLog: false, maxRetries: 0 })
             let r = [t.status, t.url, t.finalUrl]
             let rr = ['success', A, B]
             assert.strict.deepEqual(r, rr)
@@ -65,7 +65,7 @@ describe('內容之最終網址', function() {
                 s.end(bodyOf('直接', 'D'))
             })
             let u = urlOf(s1, '/direct')
-            let t = await fetchWeb(u, { method: 'curl', showLog: false, maxRetries: 0 })
+            let t = await fetchWeb(u, { method: 'curl', useShowLog: false, maxRetries: 0 })
             let r = [t.status, t.url, Object.prototype.hasOwnProperty.call(t, 'finalUrl')]
             let rr = ['success', u, false]
             assert.strict.deepEqual(r, rr)
@@ -99,7 +99,7 @@ describe('內容之最終網址', function() {
                     return { success: true, title: 'X', content: 'C'.repeat(60) }
                 },
             }]
-            let t = await fetchWeb(A, { method: 'curl', showLog: false, maxRetries: 0, adapters })
+            let t = await fetchWeb(A, { method: 'curl', useShowLog: false, maxRetries: 0, adapters })
             let r = [t.status, got]
             let rr = ['success', { url: A, requestUrl: A, finalUrl: B, method: 'curl' }]
             assert.strict.deepEqual(r, rr)
@@ -122,7 +122,7 @@ describe('內容之最終網址', function() {
                     return { success: true, title: 'X', content: 'C'.repeat(60) }
                 },
             }]
-            await fetchWeb(u, { method: 'curl', showLog: false, maxRetries: 0, adapters })
+            await fetchWeb(u, { method: 'curl', useShowLog: false, maxRetries: 0, adapters })
             let r = got
             let rr = u
             assert.strict.deepEqual(r, rr)
@@ -136,7 +136,7 @@ describe('內容之最終網址', function() {
                 s.end(bodyOf('直接', 'D'))
             })
             let adapters = [{ id: 'old', match: () => true, parse: (html, url, ctx) => ({ success: true, title: String(ctx), content: 'C'.repeat(60) }) }]
-            let t = await fetchWeb(urlOf(s1, '/direct'), { method: 'curl', showLog: false, maxRetries: 0, adapters })
+            let t = await fetchWeb(urlOf(s1, '/direct'), { method: 'curl', useShowLog: false, maxRetries: 0, adapters })
             let r = [t.status, t.title]
             let rr = ['success', 'null']
             assert.strict.deepEqual(r, rr)
@@ -167,7 +167,7 @@ describe('內容之最終網址', function() {
 
         it('推導而來者(_depth>0)轉址至內網即回internal-address, 不交出內容', async function() {
             let { WRAP } = await mkInternalPair()
-            let t = await fetchWeb(WRAP, { method: 'curl', showLog: false, maxRetries: 0, _depth: 1 })
+            let t = await fetchWeb(WRAP, { method: 'curl', useShowLog: false, maxRetries: 0, _depth: 1 })
             let r = [t.status, t.reason, String(t.content || t.html || '').includes('INTERNAL-SECRET-TOKEN')]
             let rr = ['error', 'internal-address', false]
             assert.strict.deepEqual(r, rr)
@@ -189,7 +189,7 @@ describe('內容之最終網址', function() {
                 playwrightHead: async () => ({ method: 'playwright-headed', status: 'success', html }),
                 camofox: async () => ({ method: 'camofox', status: 'success', html }),
             }
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, _depth: 1 })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, _depth: 1 })
             let r = [t.status, t.reason, t.attempts.length, n.headless]
             let rr = ['error', 'internal-address', 1, 0]
             assert.strict.deepEqual(r, rr)
@@ -200,7 +200,7 @@ describe('內容之最終網址', function() {
             //本層只把關**套件自己推導出來**的網址。呼叫端要抓自己的內網服務是正當用法,
             //一併擋掉會誤傷正常用途, 且那不是SSRF(沒有繞過任何人的防線)
             let { WRAP } = await mkInternalPair()
-            let t = await fetchWeb(WRAP, { method: 'curl', showLog: false, maxRetries: 0 })
+            let t = await fetchWeb(WRAP, { method: 'curl', useShowLog: false, maxRetries: 0 })
             let r = [t.status, String(t.content || t.html || '').includes('INTERNAL-SECRET-TOKEN')]
             let rr = ['success', true]
             assert.strict.deepEqual(r, rr)

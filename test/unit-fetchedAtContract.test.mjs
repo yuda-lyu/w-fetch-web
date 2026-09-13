@@ -44,7 +44,7 @@ describe('fetchedAt格式與取值時機', function() {
     })
 
     it('fetchWeb之fetchedAt為本地時間字串, 與下層格式刻意不同', async function() {
-        let t = await fetchWeb(URL_BAD, { showLog: false })
+        let t = await fetchWeb(URL_BAD, { useShowLog: false })
         let r = [t.status, t.reason, reLocal.test(t.fetchedAt), reIso.test(t.fetchedAt)]
         let rr = ['error', 'invalid-url', true, false]
         assert.strict.deepEqual(r, rr)
@@ -56,7 +56,7 @@ describe('fetchedAt格式與取值時機', function() {
         //以秒為單位比較: 兩者格式不同, 故各自轉為時間戳再比對區間
         let t0 = Date.now()
         let a = await fetchWebByCurl(URL_BAD)
-        let b = await fetchWeb(URL_BAD, { showLog: false })
+        let b = await fetchWeb(URL_BAD, { useShowLog: false })
         let t1 = Date.now()
 
         //ISO字串可直接解析; 本地時間字串須補上分隔以供Date解析

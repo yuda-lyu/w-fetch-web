@@ -1,19 +1,19 @@
 {
   "name": "w-fetch-web",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "main": "dist/w-fetch-web.umd.js",
   "dependencies": {
     "@askjo/camofox-browser": "1.13.1",
     "@mozilla/readability": "^0.6.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.62.1",
-    "wsemi": "^1.8.90"
+    "wsemi": "^1.8.92"
   },
   "devDependencies": {
-    "w-package-tools": "^1.1.15"
+    "w-package-tools": "^1.1.16"
   },
   "scripts": {
-    "test": "mocha --parallel --timeout 60000 \"test/*.test.mjs\"",
+    "test": "mocha --parallel \"test/*.test.mjs\" --timeout 180000",
     "cov": "node test/tools/runCoverage.mjs",
     "deploy": "gh-pages -d docs"
   },

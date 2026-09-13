@@ -32,7 +32,7 @@ describe('HTTP狀態處理之跨抓取器對稱性', function() {
         }
     })
 
-    let opt = { showLog: false, maxRetries: 0, postNavigationWaitMs: 300 }
+    let opt = { useShowLog: false, maxRetries: 0, postNavigationWaitMs: 300 }
 
     it('curl與playwright對5xx之歸因一致', async function() {
         this.timeout(60000)

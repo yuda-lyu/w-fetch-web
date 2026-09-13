@@ -12,14 +12,14 @@ describe('fetchWeb', function() {
     describe('fetchWeb', function() {
 
         it('非有效字串網址回傳error', async function() {
-            let t = await fetchWeb(null, { showLog: false })
+            let t = await fetchWeb(null, { useShowLog: false })
             let r = [t.status, t.message, t.attempts]
             let rr = ['error', 'url is required (string)', []]
             assert.strict.deepEqual(r, rr)
         })
 
         it('非http與https網址即刻回傳error, 不空跑各抓取方法', async function() {
-            let t = await fetchWeb('abc', { showLog: false })
+            let t = await fetchWeb('abc', { useShowLog: false })
             let r = [t.status, t.message, t.attempts]
             let rr = ['error', 'invalid url (must be http/https)', []]
             assert.strict.deepEqual(r, rr)
@@ -30,14 +30,14 @@ describe('fetchWeb', function() {
             //此處先前釘住的是一份漏掉'auto'的清單——'auto'既合法又是預設值, 卻不在被告知的
             //合法值裡。該斷言是當時實作的指紋而非規格的翻譯, 故隨實作一起修正。
             //值域本身之守門見 unit-valueDomains
-            let t = await fetchWeb(svr.url('/article'), { method: 'xxx', showLog: false })
+            let t = await fetchWeb(svr.url('/article'), { method: 'xxx', useShowLog: false })
             let r = [t.status, t.message, t.attempts]
             let rr = ['error', 'unknown method "xxx" (valid: auto, curl, playwright, playwright-headed, camofox)', []]
             assert.strict.deepEqual(r, rr)
         })
 
         it('指定method=curl且parse=true, 回傳解析後標題與內文', async function() {
-            let t = await fetchWeb(svr.url('/article'), { method: 'curl', maxRetries: 0, showLog: false })
+            let t = await fetchWeb(svr.url('/article'), { method: 'curl', maxRetries: 0, useShowLog: false })
             let r = [
                 t.status,
                 t.method,
@@ -62,21 +62,21 @@ describe('fetchWeb', function() {
         })
 
         it('指定method=curl且parse=false, 回傳原始HTML', async function() {
-            let t = await fetchWeb(svr.url('/article'), { method: 'curl', parse: false, maxRetries: 0, showLog: false })
+            let t = await fetchWeb(svr.url('/article'), { method: 'curl', parse: false, maxRetries: 0, useShowLog: false })
             let r = [t.status, t.method, t.html === htmlArticle, t.title, t.content]
             let rr = ['success', 'curl', true, undefined, undefined]
             assert.strict.deepEqual(r, rr)
         })
 
         it('auto模式對可直接抓取之網頁, 於curl即成功不再升級', async function() {
-            let t = await fetchWeb(svr.url('/article'), { maxRetries: 0, showLog: false })
+            let t = await fetchWeb(svr.url('/article'), { maxRetries: 0, useShowLog: false })
             let r = [t.status, t.method, t.attempts.length, t.attempts[0].method, t.attempts[0].status]
             let rr = ['success', 'curl', 1, 'curl', 'success']
             assert.strict.deepEqual(r, rr)
         })
 
         it('指定method時被inspectHtml判為挑戰頁, 回傳error且attempts記blocked', async function() {
-            let t = await fetchWeb(svr.url('/challenge'), { method: 'curl', maxRetries: 0, showLog: false })
+            let t = await fetchWeb(svr.url('/challenge'), { method: 'curl', maxRetries: 0, useShowLog: false })
             let r = [t.status, t.message, t.attempts]
             let rr = [
                 'error',
@@ -90,7 +90,7 @@ describe('fetchWeb', function() {
         })
 
         it('抓取失敗時attempts記failed且不reject', async function() {
-            let t = await fetchWeb(svr.url('/nothing'), { method: 'curl', maxRetries: 0, showLog: false })
+            let t = await fetchWeb(svr.url('/nothing'), { method: 'curl', maxRetries: 0, useShowLog: false })
             let r = [t.status, t.attempts]
             let rr = [
                 'error',
@@ -107,7 +107,7 @@ describe('fetchWeb', function() {
         let mkAdapter = (parse) => {
             return { id: 'test', match: /127\.0\.0\.1/, parse }
         }
-        let optBase = { method: 'curl', maxRetries: 0, showLog: false }
+        let optBase = { method: 'curl', maxRetries: 0, useShowLog: false }
 
         //通過MIN_CONTENT門檻之內容
         let contentOk = 'ADAPTER CONTENT '.repeat(6)
@@ -257,7 +257,7 @@ describe('fetchWeb', function() {
             let adapters = [mkAdapter(() => {
                 return { success: true, title: 'AUTO ADAPTER', content: 'x'.repeat(60) }
             })]
-            let t = await fetchWeb(svr.url('/article'), { maxRetries: 0, showLog: false, adapters })
+            let t = await fetchWeb(svr.url('/article'), { maxRetries: 0, useShowLog: false, adapters })
             let r = [t.status, t.method, t.title, t.attempts.length]
             let rr = ['success', 'curl', 'AUTO ADAPTER', 1]
             assert.strict.deepEqual(r, rr)

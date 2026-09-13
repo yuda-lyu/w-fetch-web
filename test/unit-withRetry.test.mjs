@@ -47,7 +47,7 @@ describe('withRetry', function() {
         let r = await withRetry(async () => {
             n += 1
             return n < 2 ? { ok: false, message: 'boom' } : { ok: true, value: n }
-        }, { maxRetries: 3, tag: 't', showLog: false })
+        }, { maxRetries: 3, tag: 't', useShowLog: false })
         let t = [r.ok, r.value, r.attempts, n]
         let tt = [true, 2, 2, 2]
         assert.strict.deepEqual(t, tt)
@@ -84,7 +84,7 @@ describe('withRetry', function() {
         let r = await withRetry(async () => {
             n += 1
             return { ok: false, reason: 'curl-error', message: 'fail ' + n, httpCode: 500 }
-        }, { maxRetries: 1, tag: 't', showLog: false })
+        }, { maxRetries: 1, tag: 't', useShowLog: false })
         let t = [r.ok, r.reason, r.message, r.httpCode, r.attempts, n]
         let tt = [false, 'curl-error', 'fail 2', 500, 2, 2]
         assert.strict.deepEqual(t, tt)
@@ -108,7 +108,7 @@ describe('withRetry', function() {
         await withRetry(async (attempt) => {
             seen.push(attempt)
             return seen.length < 2 ? { ok: false, message: 'x' } : { ok: true }
-        }, { maxRetries: 3, tag: 't', showLog: false })
+        }, { maxRetries: 3, tag: 't', useShowLog: false })
         let t = seen
         let tt = [1, 2]
         assert.strict.deepEqual(t, tt)
@@ -159,7 +159,7 @@ describe('withRetry之退避訊息', function() {
             await withRetry(async () => {
                 n += 1
                 return n < 2 ? { ok: false, message: 'm' } : { ok: true }
-            }, { maxRetries: 1, tag: 't', showLog: false })
+            }, { maxRetries: 1, tag: 't', useShowLog: false })
         })
         let t = out
         let tt = ''

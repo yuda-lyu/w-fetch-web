@@ -49,7 +49,7 @@ let mkAll = (o = {}) => {
 }
 
 let URL_PLAIN = 'https://example.com/article'
-let run = (url, fs, extra = {}) => fetchWeb(url, { showLog: false, _fetchers: fs, ...extra })
+let run = (url, fs, extra = {}) => fetchWeb(url, { useShowLog: false, _fetchers: fs, ...extra })
 
 
 describe('階梯升級', function() {

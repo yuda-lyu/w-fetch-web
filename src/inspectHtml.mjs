@@ -385,7 +385,7 @@ function inspectHtml(html, opt = {}) {
             hit = d.test(c)
         }
         catch (err) {
-            if (opt?.showLog !== false && d.id) {
+            if (opt?.useShowLog !== false && d.id) {
                 console.warn('[inspectHtml] detector ' + d.id + ' error: ' + (err?.message || String(err)) + ' — skipped')
             }
             continue

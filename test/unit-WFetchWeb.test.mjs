@@ -42,7 +42,7 @@ describe('WFetchWeb', function() {
     })
 
     it('可由WFetchWeb呼叫fetchWeb', async function() {
-        let t = await wi.fetchWeb('abc', { showLog: false })
+        let t = await wi.fetchWeb('abc', { useShowLog: false })
         let r = [t.status, t.message]
         let rr = ['error', 'invalid url (must be http/https)']
         assert.strict.deepEqual(r, rr)

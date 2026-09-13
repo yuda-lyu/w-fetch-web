@@ -278,7 +278,7 @@ describe('內建站台adapter', function() {
         it('gelonghui網址由內建adapter解析, 不走Readability', async function() {
             let { default: fetchWeb } = await import('../src/fetchWeb.mjs')
             let t = await fetchWeb(URL_G, {
-                showLog: false,
+                useShowLog: false,
                 method: 'curl',
                 _fetchers: { curl: async () => ({ status: 'success', html: htmlGelonghui('articleDetail'), method: 'curl' }) },
             })
@@ -290,7 +290,7 @@ describe('內建站台adapter', function() {
         it('bloomberg網址由內建adapter解析, 不走Readability', async function() {
             let { default: fetchWeb } = await import('../src/fetchWeb.mjs')
             let t = await fetchWeb(URL_B, {
-                showLog: false,
+                useShowLog: false,
                 method: 'curl',
                 _fetchers: { curl: async () => ({ status: 'success', html: htmlBloomberg(storyOk), method: 'curl' }) },
             })
@@ -337,7 +337,7 @@ describe('內建站台adapter', function() {
             let { default: fetchWeb } = await import('../src/fetchWeb.mjs')
             let big = inflate(htmlGelonghui('articleDetail'))
             let mk = (adapters) => fetchWeb(URL_G, {
-                showLog: false,
+                useShowLog: false,
                 method: 'curl',
                 adapters,
                 _fetchers: { curl: async () => ({ status: 'success', html: big, method: 'curl' }) },

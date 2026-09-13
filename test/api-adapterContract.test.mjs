@@ -12,7 +12,7 @@ import useServer from './tools/useServer.mjs'
 describe('adapter邊界契約(R01-R07回歸)', function() {
 
     let svr = useServer()
-    let optBase = { method: 'curl', maxRetries: 0, showLog: false }
+    let optBase = { method: 'curl', maxRetries: 0, useShowLog: false }
     let mk = (parse) => [{ id: 'test', match: /127\.0\.0\.1/, parse }]
     let contentOk = 'ADAPTER CONTENT '.repeat(6)
 
@@ -165,7 +165,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
             let r = 'no-throw'
             let t = null
             try {
-                t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=%25', { showLog: false, maxRetries: 0 })
+                t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=%25', { useShowLog: false, maxRetries: 0 })
             }
             catch (err) {
                 r = err.constructor.name + ': ' + err.message
@@ -181,7 +181,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
             //改以假抓取器供應內容, 使本條專注於「提取→以目標網址重走流程」這件事
             let target = 'https://example.com/real-article'
             let fs = { curl: async (u) => ({ method: 'curl', status: 'success', html: htmlArticle, url: u }) }
-            let t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=' + encodeURIComponent(target), { showLog: false, maxRetries: 0, _fetchers: fs })
+            let t = await fetchWeb('https://www.linkedin.com/redir/redirect?url=' + encodeURIComponent(target), { useShowLog: false, maxRetries: 0, _fetchers: fs })
             let r = [t.status, t.url, t.title]
             let rr = ['success', target, 'W Fetch Web Test Article']
             assert.strict.deepEqual(r, rr)
@@ -329,7 +329,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
                 },
                 parse: () => ({ success: true, title: 't', content: contentOk }),
             }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters })
             let r = [t.status, t.reason, t.message, t.attempts, fs.n()]
             let rr = ['error', 'adapter-error', 'adapter b match error: boom', [], 0]
             assert.strict.deepEqual(r, rr)
@@ -350,7 +350,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
             let fs = mkFetchers({
                 curl: async () => ({ method: 'curl', status: 'error', reason: 'curl-error', message: 'x' }),
             })
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters, maxRetries: 0 })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters, maxRetries: 0 })
             let r = [t.status, t.method, calls.length]
             let rr = ['success', 'playwright-headless', 1]
             assert.strict.deepEqual(r, rr)
@@ -372,7 +372,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
             let fs = mkFetchers({
                 curl: async () => ({ method: 'curl', status: 'error', reason: 'curl-error', message: 'x' }),
             })
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters, maxRetries: 0 })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters, maxRetries: 0 })
 
             //首次match回true, 故命中adapter; i停在1證明只問過一次
             let r = [t.status, t.title, i]
@@ -396,7 +396,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
                 parse: () => ({ success: true, title: 't', content: contentOk }),
             }]
             let fs = mkFetchers()
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters, parse: false })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters, parse: false })
             let r = [t.status, t.reason, called, fs.n()]
             let rr = ['error', 'adapter-error', true, 0]
             assert.strict.deepEqual(r, rr)
@@ -425,7 +425,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
                 parse: () => ({ success: true, title: 'T', content: contentOk }),
                 inspect: false,
             }]
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters, parse: false })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters, parse: false })
             let r = [t.status, t.method, n, t.html === big]
             let rr = ['success', 'curl', 1, true]
             assert.strict.deepEqual(r, rr)
@@ -444,7 +444,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
                 },
             }]
             let fs = mkFetchers()
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters, parse: false })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters, parse: false })
             let r = [t.status, parsed, t.title, t.html !== undefined]
             let rr = ['success', false, undefined, true]
             assert.strict.deepEqual(r, rr)
@@ -461,7 +461,7 @@ describe('adapter邊界契約(R01-R07回歸)', function() {
             let fs = mkFetchers({
                 curl: async () => ({ method: 'curl', status: 'error', reason: 'curl-error', message: 'x' }),
             })
-            let t = await fetchWeb('https://example.com/a', { showLog: false, _fetchers: fs, adapters, maxRetries: 0 })
+            let t = await fetchWeb('https://example.com/a', { useShowLog: false, _fetchers: fs, adapters, maxRetries: 0 })
             let r = [t.status, t.method, t.title]
             let rr = ['success', 'playwright-headless', 'BY-ADAPTER']
             assert.strict.deepEqual(r, rr)

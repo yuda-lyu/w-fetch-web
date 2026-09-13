@@ -215,7 +215,7 @@ function _mayEscalate(step, hit, stage, reason) {
 //各出口只描述自己特有的欄位, 展開集中在done, 漏帶在語法上就不可能發生。
 //stamp展開於紀錄末尾, 使欄位順序與此前相同(adapterId在最後); 鍵序不是契約,
 //但以JSON字串比對快照的安裝方會看到差異, 沒有理由製造它
-async function _runStep(step, url, opt, parse, hit, redirect, isDerived, showLog) {
+async function _runStep(step, url, opt, parse, hit, redirect, isDerived, useShowLog) {
 
     let stamp = step.key === STEP_ADAPTER ? { adapterId: hit.adapter.id } : {}
     let done = (stage, rec, parsed = null, redirectHint = false) => ({
@@ -270,7 +270,7 @@ async function _runStep(step, url, opt, parse, hit, redirect, isDerived, showLog
     //而detectorContract明寫「套件保證註冊的判識器一定會被比對」。
     //step.inspect(即opt.inspect總開關)則兩邊都關: 那是呼叫端對本次呼叫的明確指示
     let inspection = step.inspect
-        ? inspectHtml(r.html, { contentKind: r.contentKind, detectors: opt?.detectors, builtin: wantsInspect(hit?.adapter), showLog })
+        ? inspectHtml(r.html, { contentKind: r.contentKind, detectors: opt?.detectors, builtin: wantsInspect(hit?.adapter), useShowLog })
         : PASS_INSPECTION
     if (!inspection.pass) {
 
@@ -304,13 +304,13 @@ async function _runStep(step, url, opt, parse, hit, redirect, isDerived, showLog
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} opt 輸入設定物件
  * @param {Boolean} parse 輸入是否解析文章布林值
- * @param {Boolean} showLog 輸入是否顯示過程訊息布林值
+ * @param {Boolean} useShowLog 輸入是否顯示過程訊息布林值
  * @param {Object|null} hit 輸入已解析之adapter命中結果，由fetchWeb以findAdapter取得
  * @param {Array} plan 輸入step描述陣列，由buildPlan產生
  * @param {Boolean} redirect 輸入轉址旗標初值
  * @returns {Promise} 回傳Promise，resolve回傳對外之結果物件，本函數不會reject
  */
-async function runPlan(url, opt, parse, showLog, hit, plan, redirect) {
+async function runPlan(url, opt, parse, useShowLog, hit, plan, redirect) {
 
     let attempts = []
 
@@ -320,18 +320,18 @@ async function runPlan(url, opt, parse, showLog, hit, plan, redirect) {
     for (let step of plan) {
 
         let tag = step.label + (redirect && step.redirectAware ? ' (redirect)' : '')
-        if (showLog) {
+        if (useShowLog) {
             console.log('[fetchWeb] trying ' + tag + ' ...')
         }
 
-        let { stage, rec, parsed, redirectHint } = await _runStep(step, url, opt, parse, hit, redirect, isDerived, showLog)
+        let { stage, rec, parsed, redirectHint } = await _runStep(step, url, opt, parse, hit, redirect, isDerived, useShowLog)
         attempts.push(rec)
 
         if (stage === 'done') {
             return finalize(url, parsed, attempts)
         }
 
-        if (showLog) {
+        if (useShowLog) {
             console.warn('[fetchWeb] ' + tag + ' ' + FAIL_VERB[stage] + ': ' + rec.message)
         }
 

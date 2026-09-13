@@ -18,7 +18,7 @@ import { htmlArticle } from './tools/serverForTest.mjs'
 let mk = (method, result) => async () => ({ method, ...result })
 let ok = (html, extra = {}) => ({ status: 'success', html, ...extra })
 let URL_PLAIN = 'https://example.com/article'
-let run = (fs, extra = {}) => fetchWeb(URL_PLAIN, { showLog: false, _fetchers: fs, ...extra })
+let run = (fs, extra = {}) => fetchWeb(URL_PLAIN, { useShowLog: false, _fetchers: fs, ...extra })
 
 
 describe('fetchWeb之調度行為', function() {
@@ -81,7 +81,7 @@ describe('fetchWeb之調度行為', function() {
 
         it('camofox回傳之snapshot於parse=true時保留至輸出', async function() {
             let fs = { camofox: mk('camofox', ok(htmlArticle, { snapshot: '- heading "abc" [level=1]' })) }
-            let t = await fetchWeb('https://mp.weixin.qq.com/s/abc', { showLog: false, _fetchers: fs })
+            let t = await fetchWeb('https://mp.weixin.qq.com/s/abc', { useShowLog: false, _fetchers: fs })
             let r = [t.status, t.snapshot]
             let rr = ['success', '- heading "abc" [level=1]']
             assert.strict.deepEqual(r, rr)
@@ -89,7 +89,7 @@ describe('fetchWeb之調度行為', function() {
 
         it('camofox回傳之snapshot於parse=false時亦保留', async function() {
             let fs = { camofox: mk('camofox', ok(htmlArticle, { snapshot: '- heading "abc" [level=1]' })) }
-            let t = await fetchWeb('https://mp.weixin.qq.com/s/abc', { showLog: false, parse: false, _fetchers: fs })
+            let t = await fetchWeb('https://mp.weixin.qq.com/s/abc', { useShowLog: false, parse: false, _fetchers: fs })
             let r = [t.status, t.snapshot, t.html === htmlArticle]
             let rr = ['success', '- heading "abc" [level=1]', true]
             assert.strict.deepEqual(r, rr)
@@ -132,7 +132,7 @@ describe('fetchWeb之調度行為', function() {
             let t = 'no-reject'
             let out = null
             try {
-                out = await fetchWeb(URL_PLAIN, { showLog: false, method: 'curl', inspect: false, _fetchers: fs })
+                out = await fetchWeb(URL_PLAIN, { useShowLog: false, method: 'curl', inspect: false, _fetchers: fs })
             }
             catch (err) {
                 t = err.message
@@ -154,7 +154,7 @@ describe('fetchWeb之調度行為', function() {
                 let out = null
                 let t = 'no-reject'
                 try {
-                    out = await fetchWeb(URL_PLAIN, { showLog: false, method: 'curl', _fetchers: { curl: fn } })
+                    out = await fetchWeb(URL_PLAIN, { useShowLog: false, method: 'curl', _fetchers: { curl: fn } })
                 }
                 catch (err) {
                     t = err.message
