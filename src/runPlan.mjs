@@ -158,7 +158,7 @@ async function _applyParse(r, url, parse, hit, method, meta) {
 //後果以內建msn adapter之真實影片頁重現(2026-09-12, vi-AA1OIlxP之逐字稿僅31字):
 //解析判empty-content後仍續跑headless/headed/camofox三層, 白耗43秒, 且最終歸因被末階
 //蓋成camofox-empty, 呼叫端看不出真正原因是「這篇本來就沒有正文」。
-//安裝方(tai-kns-trade)之提案以替身獨立重現同一缺口(建議擴充msn之adapter.md §4.3)。
+//安裝方(使用端)之提案以替身獨立重現同一缺口(建議擴充msn之adapter.md §4.3)。
 //
 //fallback之語意因此定為**整個adapter階**: 該階以任何方式失敗, 都由它決定續走或收攤。
 //理由: 落回的存在理由是「換一個抓取器可能拿得到」, 而adapter宣告fallback:false時說的正是
