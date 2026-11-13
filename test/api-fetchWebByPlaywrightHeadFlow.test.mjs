@@ -4,6 +4,8 @@ import fetchWebByPlaywrightHead from '../src/fetchWebByPlaywrightHead.mjs'
 import serverForTest, { MARKER } from './tools/serverForTest.mjs'
 import hasChrome from './tools/hasChrome.mjs'
 import { skipHeaded } from './tools/env.mjs'
+import createSharedChrome from './tools/sharedChrome.mjs'
+import { isGuarded } from './tools/guardFacts.mjs'
 
 
 //有頭模式會開啟實體瀏覽器視窗, 且需要桌面環境。
@@ -12,15 +14,19 @@ import { skipHeaded } from './tools/env.mjs'
 //① 位於CI——GitHub Actions自動設CI=true與GITHUB_ACTIONS=true, 為偵測CI之直接訊號。
 //   不可只靠有頭探測: Linux runner無DISPLAY確實會探測失敗, 但Windows runner有桌面
 //   仍會通過而實際執行, 故仍需此顯性閘門
-//② 有頭模式探測失敗——涵蓋非CI但無桌面之環境。
-//   此探測必須以有頭進行, 不可用無頭結果推論: Linux常無頭可用而有頭不可用
+//② 有頭模式不可用——無系統Chrome, 或Linux無顯示伺服器(涵蓋非CI但無桌面之環境)。
+//   此判斷必須以有頭進行, 不可用無頭結果推論: Linux常無頭可用而有頭不可用(判斷不啟動瀏覽器, 見test/tools/hasChrome.mjs)
 //③ 設WFETCHWEB_SKIP_HEADED=1——供本機臨時停用, 避免測試期間彈出視窗
-//①③之判斷置於 test/tools/env.mjs; ②之探測須留在此處, 因其須與待測模式一致
+//①③之判斷置於 test/tools/env.mjs; ②之判斷須留在此處, 因其須與待測模式一致
+//
+//本檔之真Chrome至多啟動一次(有頭): 全部嘗試共用一個瀏覽器行程(各嘗試仍各開新context與頁面),
+//被替身取代之部分見test/tools/sharedChrome.mjs
 
 
 describe('fetchWebByPlaywrightHead完整流程(有頭)', function() {
 
     let svr = null
+    let sc = createSharedChrome()
 
     before(async function() {
         this.timeout(120000)
@@ -31,9 +37,12 @@ describe('fetchWebByPlaywrightHead完整流程(有頭)', function() {
             this.skip()
         }
         svr = await serverForTest()
+        sc.install()
     })
 
     after(async function() {
+        this.timeout(60000)
+        await sc.dispose()
         if (svr) {
             await svr.close()
         }
@@ -110,6 +119,14 @@ describe('fetchWebByPlaywrightHead完整流程(有頭)', function() {
         })
         let r = [t.status, includes(t.html, MARKER)]
         let rr = ['success', true]
+        assert.strict.deepEqual(r, rr)
+    })
+
+    it('本檔之真啟動經w-playwright且至多一次, 送出之選項含守門', function() {
+        //設計§5.2: 每檔最多啟動一次; R-PW-WIRING: 替身之呼叫次數>0、每次送出之args含守門且為有頭
+        //須與本檔其他案例同跑: 以--grep只選本案時無抓取, nCall為0而失敗(刻意: 替身未被呼叫即可能是啟動未經w-playwright)
+        let r = [sc.nLaunch, sc.nLaunchOk, sc.nCall > 0, sc.launchOpts.every((m) => isGuarded(m.args) && m.headless === false)]
+        let rr = [1, 1, true, true]
         assert.strict.deepEqual(r, rr)
     })
 

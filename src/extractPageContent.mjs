@@ -32,12 +32,12 @@ function _esc(s) {
  * @returns {Promise} 回傳Promise，resolve回傳{html,contentKind}物件，contentKind為'raw'或'synthesized'
  * @example
  *
- * import { chromium } from 'playwright'
+ * import wpw from 'w-playwright'
  * import extractPageContent from './src/extractPageContent.mjs'
  *
  * let test = async () => {
  *
- *     let browser = await chromium.launch({ headless: true, channel: 'chrome' })
+ *     let browser = await wpw.launchChromium({ headless: true, channel: 'chrome' })
  *     let page = await browser.newPage()
  *     await page.goto('https://example.com/')
  *     let { html, contentKind } = await extractPageContent(page)

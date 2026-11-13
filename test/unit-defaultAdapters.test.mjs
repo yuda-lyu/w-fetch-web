@@ -1,6 +1,7 @@
 import assert from 'assert'
 import map from 'lodash-es/map.js'
 import fetchWeb, { defaultAdapters } from '../src/fetchWeb.mjs'
+import './tools/noBrowser.mjs'
 import { htmlGelonghui, URL_MSN, msnApiOk } from './tools/fixtures.mjs'
 
 

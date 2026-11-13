@@ -2,6 +2,8 @@ import assert from 'assert'
 import fetchWeb from '../src/fetchWeb.mjs'
 import useServer from './tools/useServer.mjs'
 import hasChrome from './tools/hasChrome.mjs'
+import createSharedChrome from './tools/sharedChrome.mjs'
+import { isGuarded } from './tools/guardFacts.mjs'
 import { DEFAULT_UA, DEFAULT_REFERER } from '../src/requestIdentity.mjs'
 
 
@@ -48,13 +50,24 @@ describe('HTTP請求身分之端對端驗證', function() {
 
     })
 
+    //本段之真Chrome至多啟動一次: 兩次抓取共用一個瀏覽器行程(各開新context, 請求標頭由該context之選項決定),
+    //被替身取代之部分見test/tools/sharedChrome.mjs
     describe('Playwright無頭階', function() {
 
         let chromeOk = false
+        let sc = createSharedChrome()
 
         before(async function() {
             this.timeout(120000)
             chromeOk = await hasChrome()
+            if (chromeOk) {
+                sc.install()
+            }
+        })
+
+        after(async function() {
+            this.timeout(60000)
+            await sc.dispose()
         })
 
         it('指定之三項皆送出', async function() {
@@ -88,6 +101,17 @@ describe('HTTP請求身分之端對端驗證', function() {
             let h = svr.lastHeaders()
             let r = [h.userAgent === DEFAULT_UA, h.userAgent.includes('Chrome'), h.referer]
             let rr = [false, true, '']
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('本段之真啟動經w-playwright且至多一次, 送出之選項含守門', function() {
+            if (!chromeOk) {
+                this.skip()
+            }
+            //設計§5.2: 每檔最多啟動一次; R-PW-WIRING: 替身之呼叫次數>0、每次送出之args含守門
+            //須與本段其他案例同跑: 以--grep只選本案時無抓取, nCall為0而失敗(刻意: 替身未被呼叫即可能是啟動未經w-playwright)
+            let r = [sc.nLaunch, sc.nLaunchOk, sc.nCall > 0, sc.launchOpts.every((m) => isGuarded(m.args))]
+            let rr = [1, 1, true, true]
             assert.strict.deepEqual(r, rr)
         })
 

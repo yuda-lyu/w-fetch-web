@@ -18,7 +18,7 @@ rollupFiles({
         'module': 'module',
         '@mozilla/readability': '@mozilla/readability',
         'jsdom': 'jsdom',
-        'playwright': 'playwright',
+        'w-playwright': 'w-playwright',
     },
     external: [
         'child_process',
@@ -27,6 +27,6 @@ rollupFiles({
         'module',
         '@mozilla/readability',
         'jsdom',
-        'playwright',
+        'w-playwright',
     ],
 })

@@ -1,6 +1,7 @@
 import assert from 'assert'
 import findAdapter from '../src/findAdapter.mjs'
 import { defaultAdapters } from '../src/fetchWeb.mjs'
+import './tools/noBrowser.mjs'
 
 
 //最小合法parse, 供測試adapter條目合法性用

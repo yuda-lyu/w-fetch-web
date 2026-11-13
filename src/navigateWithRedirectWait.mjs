@@ -15,12 +15,12 @@ let NETWORK_IDLE_WAIT_MS = 10000
  * @returns {Promise} 回傳Promise，resolve回傳首次導航之Response物件（供呼叫端檢核HTTP狀態），同頁錨點導航等情形可能為null
  * @example
  *
- * import { chromium } from 'playwright'
+ * import wpw from 'w-playwright'
  * import navigateWithRedirectWait from './src/navigateWithRedirectWait.mjs'
  *
  * let test = async () => {
  *
- *     let browser = await chromium.launch({ headless: true, channel: 'chrome' })
+ *     let browser = await wpw.launchChromium({ headless: true, channel: 'chrome' })
  *     let page = await browser.newPage()
  *     await navigateWithRedirectWait(page, 'https://news.google.com/articles/xxxxxx', 15000)
  *     console.log(page.url())

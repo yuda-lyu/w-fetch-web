@@ -1,5 +1,6 @@
 import assert from 'assert'
 import fetchWebByPlaywrightHead from '../src/fetchWebByPlaywrightHead.mjs'
+import './tools/noBrowser.mjs'
 
 
 //本檔僅涵蓋不需啟動瀏覽器之輸入檢核案例;

@@ -1,6 +1,7 @@
 import assert from 'assert'
 import http from 'http'
 import fetchWeb from '../src/fetchWeb.mjs'
+import './tools/noBrowser.mjs'
 import { REASONS } from '../src/constants.mjs'
 
 

@@ -1,6 +1,7 @@
 import assert from 'assert'
 import map from 'lodash-es/map.js'
 import fetchWeb from '../src/fetchWeb.mjs'
+import './tools/noBrowser.mjs'
 import buildPlan from '../src/buildPlan.mjs'
 import { REASONS } from '../src/constants.mjs'
 

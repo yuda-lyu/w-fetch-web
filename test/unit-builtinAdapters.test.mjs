@@ -1,6 +1,7 @@
 import assert from 'assert'
 import includes from 'lodash-es/includes.js'
 import { defaultAdapters, inspectHtml } from '../src/fetchWeb.mjs'
+import './tools/noBrowser.mjs'
 import estimateVisibleText from '../src/estimateVisibleText.mjs'
 import { htmlGelonghui, htmlBloomberg, storyOk } from './tools/fixtures.mjs'
 

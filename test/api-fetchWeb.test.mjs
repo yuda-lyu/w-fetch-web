@@ -1,6 +1,7 @@
 import assert from 'assert'
 import includes from 'lodash-es/includes.js'
 import fetchWeb from '../src/fetchWeb.mjs'
+import './tools/noBrowser.mjs'
 import { MARKER, htmlArticle } from './tools/serverForTest.mjs'
 import useServer from './tools/useServer.mjs'
 

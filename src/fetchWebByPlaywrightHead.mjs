@@ -108,7 +108,9 @@ async function _onPage(page) {
  * 自動偵測並點擊Cloudflare Turnstile與hCaptcha等驗證checkbox(模擬人類滑鼠軌跡)；
  * 可見文字過少時自動穿透Shadow DOM取得內文並重組為簡易HTML；
  * 失敗時自動重試(線性退避3至15秒)；
- * 使用playwright之chromium並指定channel='chrome'，故執行環境須已安裝Chrome瀏覽器，且執行時會開啟實體瀏覽器視窗
+ * 經w-playwright啟動並指定channel='chrome'，故執行環境須已安裝Google Chrome瀏覽器，且執行時會開啟實體瀏覽器視窗；
+ * 每次啟動之命令列一律含停用AutofillAiWalletPrivatePasses之守門參數(避免Windows帳號因LogonUser被鎖)，
+ * 環境變數PWDEBUG(inspector值)或SELENIUM_REMOTE_URL有值時拒絕啟動並回playwright-error
  *
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}

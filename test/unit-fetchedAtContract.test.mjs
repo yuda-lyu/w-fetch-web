@@ -1,5 +1,6 @@
 import assert from 'assert'
 import fetchWeb from '../src/fetchWeb.mjs'
+import './tools/noBrowser.mjs'
 import fetchWebByCurl from '../src/fetchWebByCurl.mjs'
 import fetchWebByCamofox from '../src/fetchWebByCamofox.mjs'
 import fetchWebByPlaywrightHeadless from '../src/fetchWebByPlaywrightHeadless.mjs'

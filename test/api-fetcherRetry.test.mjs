@@ -4,6 +4,8 @@ import fetchWebByCurl from '../src/fetchWebByCurl.mjs'
 import fetchWebByPlaywrightHeadless from '../src/fetchWebByPlaywrightHeadless.mjs'
 import serverForTest, { MARKER } from './tools/serverForTest.mjs'
 import hasChrome from './tools/hasChrome.mjs'
+import createSharedChrome from './tools/sharedChrome.mjs'
+import { isGuarded } from './tools/guardFacts.mjs'
 
 
 //重試分支之退避為線性3秒起跳, 故本檔案之逾時放寬
@@ -88,7 +90,22 @@ describe('抓取函數之重試與選項分支', function() {
 
     })
 
+    //本段之真Chrome至多啟動一次: 全部嘗試(含重試)共用一個瀏覽器行程, 被替身取代之部分見test/tools/sharedChrome.mjs。
+    //重試次數之斷言對象為runPlaywright之嘗試次數(attempts), 不受共用影響
     describe('fetchWebByPlaywrightHeadless', function() {
+
+        let sc = createSharedChrome()
+
+        before(function() {
+            if (chromeOk) {
+                sc.install()
+            }
+        })
+
+        after(async function() {
+            this.timeout(60000)
+            await sc.dispose()
+        })
 
         it('waitForRedirect=true時走轉址等待路徑', async function() {
             if (!chromeOk) {
@@ -120,6 +137,18 @@ describe('抓取函數之重試與選項分支', function() {
             let t = await fetchWebByPlaywrightHeadless(svr.url('/article'), { maxRetries: 'abc', postNavigationWaitMs: -1, navigationTimeoutMs: 'x' })
             let r = [t.status, includes(t.html, MARKER)]
             let rr = ['success', true]
+            assert.strict.deepEqual(r, rr)
+        })
+
+        it('本段之真啟動經w-playwright且至多一次, 送出之選項含守門', function() {
+            if (!chromeOk) {
+                this.skip()
+            }
+            //設計§5.2: 每檔最多啟動一次; R-PW-WIRING: 替身之呼叫次數>0、每次送出之args含守門
+            //(每次嘗試皆經w-playwright之次數對應, 由unit-playwrightWiring以不啟動瀏覽器之替身斷言)
+            //須與本段其他案例同跑: 以--grep只選本案時無抓取, nCall為0而失敗(刻意: 替身未被呼叫即可能是啟動未經w-playwright)
+            let r = [sc.nLaunch, sc.nLaunchOk, sc.nCall > 0, sc.launchOpts.every((m) => isGuarded(m.args))]
+            let rr = [1, 1, true, true]
             assert.strict.deepEqual(r, rr)
         })
 

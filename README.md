@@ -20,8 +20,15 @@ npm i w-fetch-web
 
 Note:
 - `fetchWebByCurl` needs `curl` in system PATH.
-- `fetchWebByPlaywrightHeadless` and `fetchWebByPlaywrightHead` need Chrome installed (playwright uses `channel: 'chrome'`).
+- `fetchWebByPlaywrightHeadless` and `fetchWebByPlaywrightHead` need **Google Chrome** installed (launched through `w-playwright` with `channel: 'chrome'`).
 - `fetchWebByCamofox` spawns the `@askjo/camofox-browser` server as a child process, and needs the Camoufox binaries fetched by that package's postinstall.
+
+Browser launch (w-playwright):
+- 兩個Playwright抓取函數(含`fetchWeb`之`playwright`、`playwright-headed`兩法)一律經自有套件`w-playwright`啟動瀏覽器，本套件不直接依賴`playwright`／`playwright-core`。安裝本套件即經`w-playwright`帶入`playwright-core`精確`1.64.1`；使用端不需、也不應另裝`playwright`。
+- 只用系統Chrome(`channel: 'chrome'`)，**須自行安裝Google Chrome**。不使用Playwright受管之瀏覽器，故不需`ensureChromium()`，也**不要用`npx playwright install`**(依賴樹中他版被提升時會下載到不同版本之瀏覽器)；離線環境只需安裝Google Chrome(`PLAYWRIGHT_BROWSERS_PATH`只影響受管瀏覽器，本套件用不到)。
+- **守門參數與原因**：Windows上Chromium 153起，每啟動一個瀏覽器根行程即以無效密碼替目前使用者呼叫一次`LogonUser`(錯誤密碼次數+1；常見之帳戶原則為10分鐘內10次即鎖住帳號)，而本套件每次嘗試各啟動一次瀏覽器(預設含重試至多6次)。`w-playwright`於每次啟動之命令列恰給一串`--disable-features`(Playwright預設清單＋`AutofillAiWalletPrivatePasses`＋呼叫端自給者)，用以停用該功能；不提供關閉之選項。已實測錯誤密碼次數增量為0之組合(瀏覽器版本、通道、無頭)與未驗證之範圍(含有頭)見`w-playwright`之README〈驗證狀態〉，未列者不視為已證。
+- **拒絕啟動之情形**(皆回`status:'error'`、`reason:'playwright-error'`，函數仍不reject；仍依`maxRetries`重試，拒絕條件持續期間重試無效)：環境變數`PWDEBUG`為inspector模式之值(含其npm別名，且`w-playwright`載入時之值亦算)、`SELENIUM_REMOTE_URL`有值(兩者會使守門失效)；依賴樹之`playwright-core`版本與`w-playwright`內附表不符；環境變數`W_PLAYWRIGHT_LOGON_GUARD`開啟，且目前使用者之錯誤密碼次數≥1、帳號已鎖或讀不到(非Windows、網域帳號等一律讀不到)。詳見`w-playwright`之README。
+- **行為變更**(改經`w-playwright`起)：啟動失敗之`message`改為`w-playwright`之固定詞彙(如`browser launch failed`、`unsupported environment: PWDEBUG`)，不再含Playwright之原錯誤(其內含完整命令列與設定檔路徑)。請以`reason`判斷失敗歸因，勿解析`message`；導航與取內容之失敗訊息不變。
 
 Concurrency:
 - `fetchWebByCamofox` binds a **fixed port** (default `19377`) and **must not run concurrently on the same port**. A second concurrent call fails to bind, then mistakes the first call's server for its own; whichever finishes first kills that server, and the other one fails with `camofox-error`. To run several at once, give each call a distinct `port`.

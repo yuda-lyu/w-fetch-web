@@ -17,7 +17,9 @@ let DEFAULT_POST_NAV_WAIT_MS = 3000
  * 無頭模式適用SPA等須執行JS渲染之頁面；
  * 可見文字過少時自動穿透Shadow DOM取得內文並重組為簡易HTML；
  * 失敗時自動重試(線性退避3至15秒)；
- * 使用playwright之chromium並指定channel='chrome'，故執行環境須已安裝Chrome瀏覽器
+ * 經w-playwright啟動並指定channel='chrome'，故執行環境須已安裝Google Chrome瀏覽器；
+ * 每次啟動之命令列一律含停用AutofillAiWalletPrivatePasses之守門參數(避免Windows帳號因LogonUser被鎖)，
+ * 環境變數PWDEBUG(inspector值)或SELENIUM_REMOTE_URL有值時拒絕啟動並回playwright-error
  *
  * @param {String} url 輸入待抓取網址字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
