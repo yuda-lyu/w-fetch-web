@@ -1,5 +1,5 @@
 import { Readability } from '@mozilla/readability'
-import { JSDOM } from 'jsdom'
+import { JSDOM, VirtualConsole } from 'jsdom'
 import isfun from 'wsemi/src/isfun.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import { meetsMinContent, normalizeParsed } from './adapterContract.mjs'
@@ -56,7 +56,17 @@ async function parseArticle(html, url, hit, meta = null) {
 
         //base url取最終網址: Readability以它解析相對連結與判斷同源。
         //此前恆用請求網址, 轉址後的頁面其文內相對連結會被解析到**轉址來源**的origin
-        let doc = new JSDOM(html, { url: isestr(meta?.finalUrl) ? meta.finalUrl : url })
+        //
+        //virtualConsole: 傳入**不轉印**之實例。jsdom之預設會把解析錯誤轉印到呼叫端之console.error;
+        //jsdom 30.x遇畸形CSS時靜默, 31.0.0起改為每個無法解析之樣式表輸出一行「Could not parse CSS stylesheet」
+        //(實測: 一個含括號不成對、宣告未結束之樣式表, 每解析一次印4行)。第三方網頁之CSS錯誤對呼叫端無從處理,
+        //而本函數處理任意網址之頁面, 這會使安裝方之標準錯誤輸出被不可控之第三方內容灌入。
+        //故由本套件靜音, 維持升級前「解析不寫呼叫端console」之行為; 安裝方不需配合
+        //(本站點未設runScripts/resources, 無其他來源之jsdomError; 若日後設定它們, 須重新決定哪些錯誤要轉印)
+        let doc = new JSDOM(html, {
+            url: isestr(meta?.finalUrl) ? meta.finalUrl : url,
+            virtualConsole: new VirtualConsole(),
+        })
         article = new Readability(doc.window.document).parse()
     }
     catch (err) {

@@ -30,6 +30,11 @@ Browser launch (w-playwright):
 - **拒絕啟動之情形**(皆回`status:'error'`、`reason:'playwright-error'`，函數仍不reject；仍依`maxRetries`重試，拒絕條件持續期間重試無效)：環境變數`PWDEBUG`為inspector模式之值(含其npm別名，且`w-playwright`載入時之值亦算)、`SELENIUM_REMOTE_URL`有值(兩者會使守門失效)；依賴樹之`playwright-core`版本與`w-playwright`內附表不符；環境變數`W_PLAYWRIGHT_LOGON_GUARD`開啟，且目前使用者之錯誤密碼次數≥1、帳號已鎖或讀不到(非Windows、網域帳號等一律讀不到)。詳見`w-playwright`之README。
 - **行為變更**(改經`w-playwright`起)：啟動失敗之`message`改為`w-playwright`之固定詞彙(如`browser launch failed`、`unsupported environment: PWDEBUG`)，不再含Playwright之原錯誤(其內含完整命令列與設定檔路徑)。請以`reason`判斷失敗歸因，勿解析`message`；導航與取內容之失敗訊息不變。
 
+Parsing (jsdom + Readability):
+- 解析(`parse:true`且未命中adapter之`parse`時)以`jsdom`建DOM、交`@mozilla/readability`取出`title`與`content`。安裝本套件即帶入`jsdom`(現為31.x)；Node.js版本須符合其`engines`(`^22.22.2 || ^24.15.0 || >=26`，與30.x相同)。
+- 解析只讀已抓回之HTML字串：**不執行頁面之script、不載入任何子資源**(樣式表、`@import`、圖片、iframe、object等)，故不會因解析而對外發出請求，也不會把解析錯誤(如無法解析之CSS)轉印到呼叫端之console。使用端不需、也不應為此另設`jsdom`選項。
+- **行為變更**(`jsdom` 30→31起)：判定「隱藏而不納入`content`」依元素之inline `style`(`display:none`、`visibility:hidden`)與`hidden`、`aria-hidden="true"`屬性。`jsdom` 31起inline style之屬性名不分大小寫，`style="DISPLAY:NONE"`現亦視為隱藏(30.x視為可見)，故少數使用此類寫法之頁面，其`content`會少一個被隱藏之區塊；回傳形狀、其餘結果不變。
+
 Concurrency:
 - `fetchWebByCamofox` binds a **fixed port** (default `19377`) and **must not run concurrently on the same port**. A second concurrent call fails to bind, then mistakes the first call's server for its own; whichever finishes first kills that server, and the other one fails with `camofox-error`. To run several at once, give each call a distinct `port`.
 - This also applies to `fetchWeb` in `auto` mode, since its last escalation step is `fetchWebByCamofox`. Methods ①②③ have no such limit.

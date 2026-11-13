@@ -293,3 +293,29 @@ API 組出來的 HTML 來源已知，那些猜測對它只剩誤判一個方向�
   （替身為堆疊，其餘替身疊在其上、還原後回到它），凡可達 `runPlaywright` 之測試檔皆匯入；`sharedChrome` 之真啟動以檔案鎖跨行程依序進行。
   教訓：安全不變式要以「預設拒絕、例外標記」實作（本專案原則三之 1），不要以「列舉會啟動者」實作——列舉漏一個就破。
 - **`rg -L` 不是「不含者」**（是跟隨連結）；要列「不含某字串之檔」用 `rg --files-without-match`。盤點指令寫好後先以去掉匯入之副本驗證能抓到。
+
+## 九、jsdom 30→31 升級之等價比對（2026-11-14，jd-fw2）
+
+升級結論與數字見規則帳本四之 2026-11-14 列；此處記方法與教訓。
+
+- **「修前」基線要重現鎖定之整棵樹，不是只裝舊版 jsdom**：`git archive HEAD package.json package-lock.json src test/tools` 解到 `./tmp`，
+  `npm ci --omit=dev --ignore-scripts`（本機設有 7 天冷卻時，鎖定版本若在冷卻期內會 `ETARGET`，僅此側夾加 `--min-release-age=0`，不影響本專案之安裝）。
+  實測：只裝 `jsdom@30.1.3` 之鬆散基線與鎖定樹在 4／88 之 DOM 序列化不同——升級連帶把傳遞相依 parse5 由 8.0.1 帶到 8.1.0
+  （屬性值內 `<`／`>` 改轉義）。用鬆散基線會把這差異誤記到 jsdom 31 頭上；**三方比對（鎖定樹／鬆散 30.1.3／31.0.0）才能歸因**。
+- **比對腳本之雜訊先消掉**：本機計數伺服器之埠隨機，埠號混進輸出使 6 項無謂不同（且當時之修前產物已刪、得重跑）。夾具內之可變值（埠、時間）一律固定。
+- **比對之層要寬於「對外輸出」**：本次唯一須調適之項目（31 起畸形 CSS 經預設 virtualConsole 對呼叫端 `console.error` 印一行）在 console 層，
+  `parseArticle` 之輸出完全相同。層：A 對外輸出、B Readability 原始輸出、C DOM 統計（同步時／settle 後）、D style 探針、E console、F 資源請求（計數伺服器）。
+  只比 A 會漏掉唯一須調適之項。console 要分「本套件之呼叫」與「腳本自建之對照 jsdom」兩份記錄，否則修後看起來仍有輸出。
+- **判斷「受不受影響」先查被依賴者實際讀哪些 API，不憑 release notes 字面**：Readability 只讀 `node.style.display`／`visibility` 與 `hidden`、`aria-hidden`
+  （`Readability.js` 之 `_isProbablyVisible`），不呼叫 `getComputedStyle`；故「CSS 引擎重寫、computed style 不同」（實測：flex 子項 `inline`→`block`、
+  `margin:0`→`0px`、`ul` 預設邊距）對本套件惰性，唯一實際影響是 inline style 之解析（屬性名大小寫）。
+- **「遇阻塞式 script 回傳部分解析之文件」只在 `runScripts`／`resources` 開啟時成立**：本套件未設，script 不取不執行，建構子返回即完整
+  （`readyState` 由 `loading` 變 `interactive`，無人讀取）。以本機計數伺服器直接證明零請求，不靠推論；變異：加 `resources:'usable'` 後 `/head.css` 請求出現、測試轉紅
+  （注意只加 `resources` 不加 `runScripts` 時 script 仍不取，故該變異驗的是樣式表請求）。
+- **Readability 對深層巢狀 `div` 為超線性**，與 jsdom 版本無關（30.1.3、31.0.0 皆然）：100／200／400／800／1600 層之 Readability 耗時約 37／71／282／1570／14580 ms，
+  3000 層逾 3 分鐘不返回（同步佔滿事件迴圈）。比對語料之深度須受控（取 400／1200），否則腳本自己卡死（本輪曾卡兩次，各以 `taskkill` 收掉並回驗）。
+  `parseArticle` 對此無深度／大小守門，屬範圍外觀察，見 `sgud/feedback/feedback.md`。
+- **效能**：31 較 30.1.3 快約 25%（同批 4 個真實頁面 × 40 次：16–19 秒 → 12–13 秒）；反覆呼叫（不關 window）之 gc 後 heap 增量 31 穩定在約 14 MB、30.1.3 在 10–143 MB 間波動，兩者皆無累積。
+- **測試設計**：fixture 取真實頁面之常見形態（分析 script、preload／樣式表、舊式 CMS 之大寫 style 屬性、舊 IE 之 CSS hack、畸形 CSS、script 內之 `<!--`），不照實作構造；
+  本檔無替身（真 jsdom、真 Readability、真本機 HTTP 伺服器只計數）。該檔於 30.1.3＋HEAD 之 src 跑為 44 過 2 敗（`DISPLAY:NONE`＝31 之行為；接線）、
+  31＋HEAD 之 src 為 44 過 2 敗（console；接線）、31＋新 src 為 46 全過。
