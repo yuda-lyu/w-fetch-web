@@ -1,13 +1,13 @@
 {
   "name": "w-fetch-web",
-  "version": "1.0.67",
+  "version": "1.0.68",
   "main": "dist/w-fetch-web.umd.js",
   "dependencies": {
     "@askjo/camofox-browser": "1.13.1",
     "@mozilla/readability": "^0.6.0",
     "jsdom": "^31.0.1",
     "w-playwright": "^1.0.7",
-    "wsemi": "^1.9.81"
+    "wsemi": "^1.9.82"
   },
   "devDependencies": {
     "w-package-tools": "^1.1.32"
